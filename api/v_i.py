@@ -40,7 +40,7 @@ def slow_movers(request):
                 "sell_speed_per_week": 1.4,
                 "stock": 32,
                 "recommendation": "discount",
-                "reason": "فروش کند ولی حاشیه سود قابل قبول",
+                "reason": "فروش کند، ولی حاشیه سود قابل قبول",
             },
         ]
     }
@@ -156,7 +156,7 @@ def comment_analysis(request):
         "sentiment_score": 0.82,
         "top_issues": [
             {"tag": "delay", "count": 14, "example": "ارسال یک روز دیرتر رسید"},
-            {"tag": "packaging", "count": 9, "example": "بسته‌بندی می‌توانست بهتر باشد"},
+            {"tag": "packaging", "count": 9, "example": "بسته‌بندی میتونست بهتر باشه"},
         ],
         "top_likes": [
             {"tag": "quality", "count": 35, "example": "طعم و عطر عالی"},
