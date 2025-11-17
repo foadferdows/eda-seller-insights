@@ -28,6 +28,15 @@ export async function apiGet(path: string) {
   });
   if (!res.ok) {
     const text = await res.text();
+    // اگر توکن منقضی شده، localStorage را پاک کن و صفحه را رفرش کن
+    if (res.status === 401 && text.includes("token_not_valid")) {
+      try {
+        localStorage.removeItem("access");
+        localStorage.removeItem("refresh");
+      } catch {}
+      // برگرداندن کاربر به صفحه لاگین
+      window.location.reload();
+    }
     throw new Error(text || res.statusText);
   }
   return res.json();

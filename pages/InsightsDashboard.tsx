@@ -87,11 +87,15 @@ export default function InsightsDashboard() {
 
   if (error) {
     return (
-      <div className="bg-gray-800 p-4 rounded-2xl border border-gray-700 mt-8">
-        <p className="text-red-400 text-sm">خطا: {error}</p>
+      <div className="mt-4">
+        <div className="bg-red-900/40 border border-red-700 text-red-100 text-sm rounded-2xl px-4 py-3">
+          <div className="font-semibold mb-1">خطا در دریافت داده‌های تحلیلی</div>
+          <div className="break-all">{error}</div>
+        </div>
       </div>
     );
   }
+
 
   if (
     !profit ||
@@ -105,11 +109,24 @@ export default function InsightsDashboard() {
     !comments
   ) {
     return (
-      <div className="bg-gray-800 p-4 rounded-2xl border border-gray-700 mt-8">
-        <p className="text-gray-400 text-sm">در حال بارگذاری تحلیل‌ها...</p>
+      <div className="mt-4 grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
+        {Array.from({ length: 6 }).map((_, i) => (
+          <div
+            key={i}
+            className="bg-gray-800 p-4 rounded-2xl border border-gray-700 animate-pulse"
+          >
+            <div className="h-4 w-1/2 bg-gray-700 rounded mb-4" />
+            <div className="space-y-2">
+              <div className="h-3 bg-gray-700 rounded w-5/6" />
+              <div className="h-3 bg-gray-700 rounded w-2/3" />
+              <div className="h-3 bg-gray-700 rounded w-4/5" />
+            </div>
+          </div>
+        ))}
       </div>
     );
   }
+
 
   return (
     <div className="space-y-8 mt-8">
