@@ -14,6 +14,7 @@ from .views_insights import (
     speed_compare,
     comment_analysis,
 )
+from .views_settings import seller_settings
 
 
 
@@ -22,6 +23,7 @@ urlpatterns = [
     path("dk/profile/", seller_profile),  
     path('auth/login/', TokenObtainPairView.as_view(), name='token_obtain_pair'),
     path('auth/refresh/', TokenRefreshView.as_view(), name='token_refresh'),
+    path("settings/", seller_settings, name="seller_settings"),
 
     path('ping/', ping),
     path('charts/sales-forecast/', sales_forecast),

@@ -5,6 +5,7 @@ import InsightsDashboard from "./pages/InsightsDashboard";
 import Dashboard from "./components/Dashboard"; // اگر فعلاً لازم نیست می‌توانی حذفش کنی
 import { getJwt } from "./services/api";
 import AppLayout, { Tab } from "./components/layout/AppLayout";
+import Settings from "./pages/Settings";
 
 export default function App() {
   const [jwt, setJwt] = useState<string | null>(getJwt());
@@ -62,6 +63,13 @@ export default function App() {
           <Dashboard />
         </div>
       )}
+
+      {activeTab === "settings" && (
+        <div className="space-y-6">
+          <Settings />
+        </div>
+      )}
+
     </AppLayout>
   );
 }

@@ -43,15 +43,31 @@ export async function apiGet(path: string) {
 }
 
 export async function post(path: string, body: any) {
+  const token = getJwt();
+
   const res = await fetch(`${BASE}${path}`, {
     method: "POST",
-    headers: { "Content-Type": "application/json" },
+    headers: {
+      "Content-Type": "application/json",
+      ...(token ? { Authorization: `Bearer ${token}` } : {}),
+    },
     body: JSON.stringify(body),
   });
+
+  const text = await res.text();
+
   if (!res.ok) {
-    const text = await res.text();
+    // اگر توکن منقضی شده، مثل apiGet هندل کن
+    if (res.status === 401 && text.includes("token_not_valid")) {
+      try {
+        localStorage.removeItem("access");
+        localStorage.removeItem("refresh");
+      } catch {}
+      window.location.reload();
+    }
     throw new Error(text || res.statusText);
   }
-  return res.json();
+
+  return text ? JSON.parse(text) : null;
 }
 

@@ -1,0 +1,128 @@
+review_id,product_id,review_date,rating,comment_text
+R-P001-0,P001,2025-10-18,3,Could be better
+R-P001-1,P001,2025-09-19,2,Value for money
+R-P001-2,P001,2025-09-03,4,Not as expected
+R-P001-3,P001,2025-09-09,3,Good quality
+R-P001-4,P001,2025-08-26,1,Bad packaging
+R-P001-5,P001,2025-10-01,5,Satisfied
+R-P001-6,P001,2025-10-18,5,Fast delivery
+R-P001-7,P001,2025-11-11,2,Bad packaging
+R-P001-8,P001,2025-08-24,3,Could be better
+R-P001-9,P001,2025-09-29,2,Value for money
+R-P001-10,P001,2025-10-23,1,Value for money
+R-P001-11,P001,2025-08-24,1,Good quality
+R-P002-0,P002,2025-11-15,3,Bad packaging
+R-P002-1,P002,2025-09-15,4,Fast delivery
+R-P002-2,P002,2025-10-09,3,Excellent!
+R-P002-3,P002,2025-10-28,3,Could be better
+R-P002-4,P002,2025-09-03,5,Excellent!
+R-P002-5,P002,2025-10-10,4,Fast delivery
+R-P002-6,P002,2025-09-07,3,Good quality
+R-P002-7,P002,2025-09-16,4,Bad packaging
+R-P002-8,P002,2025-11-02,2,Bad packaging
+R-P002-9,P002,2025-09-06,4,Could be better
+R-P002-10,P002,2025-09-23,3,Not as expected
+R-P002-11,P002,2025-10-23,5,Excellent!
+R-P002-12,P002,2025-09-21,4,Good quality
+R-P002-13,P002,2025-10-12,3,Fast delivery
+R-P003-0,P003,2025-08-21,1,Satisfied
+R-P003-1,P003,2025-10-22,1,Bad packaging
+R-P003-2,P003,2025-10-10,1,Satisfied
+R-P003-3,P003,2025-10-06,3,Value for money
+R-P003-4,P003,2025-09-10,2,Not as expected
+R-P003-5,P003,2025-09-04,5,Not as expected
+R-P003-6,P003,2025-09-14,4,Not as expected
+R-P003-7,P003,2025-09-13,3,Excellent!
+R-P004-0,P004,2025-08-28,1,Could be better
+R-P004-1,P004,2025-09-06,3,Bad packaging
+R-P004-2,P004,2025-11-15,1,Excellent!
+R-P004-3,P004,2025-10-31,3,Good quality
+R-P004-4,P004,2025-09-12,1,Not as expected
+R-P004-5,P004,2025-09-07,2,Excellent!
+R-P004-6,P004,2025-11-08,1,Satisfied
+R-P004-7,P004,2025-10-28,3,Excellent!
+R-P004-8,P004,2025-10-06,4,Could be better
+R-P004-9,P004,2025-10-16,5,Could be better
+R-P005-0,P005,2025-11-06,1,Satisfied
+R-P005-1,P005,2025-11-02,5,Excellent!
+R-P005-2,P005,2025-10-23,4,Bad packaging
+R-P005-3,P005,2025-11-01,5,Satisfied
+R-P005-4,P005,2025-09-28,3,Value for money
+R-P005-5,P005,2025-09-20,4,Excellent!
+R-P005-6,P005,2025-10-18,3,Could be better
+R-P005-7,P005,2025-09-15,2,Could be better
+R-P005-8,P005,2025-10-31,2,Value for money
+R-P005-9,P005,2025-11-15,2,Not as expected
+R-P005-10,P005,2025-09-27,5,Excellent!
+R-P005-11,P005,2025-09-27,5,Could be better
+R-P006-0,P006,2025-08-18,5,Excellent!
+R-P006-1,P006,2025-10-31,4,Good quality
+R-P006-2,P006,2025-11-04,5,Could be better
+R-P006-3,P006,2025-11-09,3,Could be better
+R-P006-4,P006,2025-09-13,2,Excellent!
+R-P006-5,P006,2025-09-18,2,Bad packaging
+R-P006-6,P006,2025-09-01,4,Satisfied
+R-P007-0,P007,2025-10-11,3,Excellent!
+R-P007-1,P007,2025-10-12,4,Excellent!
+R-P007-2,P007,2025-10-25,4,Excellent!
+R-P007-3,P007,2025-09-24,5,Bad packaging
+R-P007-4,P007,2025-09-21,3,Satisfied
+R-P007-5,P007,2025-09-15,3,Fast delivery
+R-P007-6,P007,2025-11-08,3,Fast delivery
+R-P008-0,P008,2025-11-15,1,Not as expected
+R-P008-1,P008,2025-09-15,2,Could be better
+R-P008-2,P008,2025-09-29,4,Value for money
+R-P008-3,P008,2025-11-10,3,Satisfied
+R-P008-4,P008,2025-09-17,4,Excellent!
+R-P008-5,P008,2025-10-09,4,Bad packaging
+R-P008-6,P008,2025-11-13,2,Good quality
+R-P008-7,P008,2025-09-25,1,Satisfied
+R-P008-8,P008,2025-10-04,2,Fast delivery
+R-P008-9,P008,2025-10-31,3,Bad packaging
+R-P009-0,P009,2025-10-09,1,Bad packaging
+R-P009-1,P009,2025-11-12,5,Satisfied
+R-P009-2,P009,2025-11-03,3,Excellent!
+R-P009-3,P009,2025-10-13,3,Could be better
+R-P009-4,P009,2025-10-14,3,Good quality
+R-P009-5,P009,2025-08-31,5,Bad packaging
+R-P009-6,P009,2025-09-26,2,Fast delivery
+R-P009-7,P009,2025-08-31,4,Satisfied
+R-P009-8,P009,2025-10-06,2,Could be better
+R-P009-9,P009,2025-09-03,1,Excellent!
+R-P009-10,P009,2025-10-27,3,Bad packaging
+R-P009-11,P009,2025-10-10,2,Not as expected
+R-P009-12,P009,2025-09-09,2,Good quality
+R-P009-13,P009,2025-10-11,1,Bad packaging
+R-P010-0,P010,2025-09-20,5,Satisfied
+R-P010-1,P010,2025-11-04,4,Bad packaging
+R-P010-2,P010,2025-10-20,1,Value for money
+R-P010-3,P010,2025-10-22,2,Could be better
+R-P010-4,P010,2025-11-04,1,Bad packaging
+R-P010-5,P010,2025-11-03,3,Excellent!
+R-P010-6,P010,2025-09-27,2,Satisfied
+R-P010-7,P010,2025-10-21,5,Satisfied
+R-P010-8,P010,2025-09-08,5,Good quality
+R-P010-9,P010,2025-10-25,1,Value for money
+R-P010-10,P010,2025-09-18,2,Value for money
+R-P010-11,P010,2025-10-15,2,Value for money
+R-P010-12,P010,2025-10-22,1,Satisfied
+R-P010-13,P010,2025-09-10,3,Good quality
+R-P010-14,P010,2025-10-25,5,Not as expected
+R-P011-0,P011,2025-09-23,1,Bad packaging
+R-P011-1,P011,2025-08-18,5,Fast delivery
+R-P011-2,P011,2025-08-26,3,Not as expected
+R-P011-3,P011,2025-10-02,4,Fast delivery
+R-P011-4,P011,2025-10-16,5,Fast delivery
+R-P011-5,P011,2025-08-20,3,Satisfied
+R-P011-6,P011,2025-09-05,2,Good quality
+R-P011-7,P011,2025-10-17,4,Not as expected
+R-P011-8,P011,2025-10-18,1,Not as expected
+R-P012-0,P012,2025-10-07,4,Excellent!
+R-P012-1,P012,2025-08-25,4,Satisfied
+R-P012-2,P012,2025-11-06,3,Not as expected
+R-P012-3,P012,2025-09-07,1,Could be better
+R-P012-4,P012,2025-09-01,4,Good quality
+R-P012-5,P012,2025-09-26,4,Fast delivery
+R-P012-6,P012,2025-10-02,1,Good quality
+R-P012-7,P012,2025-10-08,4,Good quality
+R-P012-8,P012,2025-09-07,3,Fast delivery

@@ -1,6 +1,6 @@
 import React from "react";
 
-export type Tab = "profile" | "insights" | "classic";
+export type Tab = "profile" | "insights" | "classic" | "settings";
 
 interface AppLayoutProps {
   activeTab: Tab;
@@ -10,9 +10,10 @@ interface AppLayoutProps {
 }
 
 const tabs: { id: Tab; label: string }[] = [
-  { id: "profile",  label: "پروفایل فروشنده" },
-  { id: "insights", label: "داشبورد اینسایت‌ها" },
-  { id: "classic",  label: "داشبورد کلاسیک (چارت‌ها)" },
+  { id: "profile",  label: "Profile" },
+  { id: "insights", label: "Insights Dashboard" },
+  { id: "classic",  label: "Classic Dashboard" },
+  { id: "settings", label: "Settings" },
 ];
 
 export default function AppLayout({
