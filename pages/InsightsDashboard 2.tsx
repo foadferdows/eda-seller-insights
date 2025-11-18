@@ -1,5 +1,7 @@
+// src/pages/InsightsDashboard.tsx
 import React, { useEffect, useState } from "react";
 import {
+  getProducts,
   getProfitMargin,
   getSlowMovers,
   getBreakeven,
@@ -9,21 +11,17 @@ import {
   getRestockTime,
   getSpeedCompare,
   getCommentAnalysis,
+  type ProductSummary,
 } from "../services/dk";
 
 import { MetricCard, StatRow } from "../components/ui/MetricCard";
 import type { ProfitMargin, SlowMovers } from "../types/insights";
 
-const PRODUCTS = [
-  { sku: "A-101", label: "A-101 – قهوه اسپرسو تک‌خاستگاه" },
-  { sku: "B-220", label: "B-220 – ماگ سرامیکی آبی" },
-  { sku: "C-111", label: "C-111 – چای ماسالا ۲۵۰ گرمی" },
-];
-
 type AnyObj = Record<string, any>;
 
 export default function InsightsDashboard() {
-  const [selectedSku, setSelectedSku] = useState<string>(PRODUCTS[0].sku);
+  const [products, setProducts] = useState<ProductSummary[]>([]);
+  const [selectedSku, setSelectedSku] = useState<string | null>(null);
 
   const [profit, setProfit] = useState<ProfitMargin | null>(null);
   const [slow, setSlow] = useState<SlowMovers | null>(null);
@@ -34,12 +32,44 @@ export default function InsightsDashboard() {
   const [restock, setRestock] = useState<AnyObj | null>(null);
   const [speed, setSpeed] = useState<AnyObj | null>(null);
   const [comments, setComments] = useState<AnyObj | null>(null);
+
   const [error, setError] = useState<string | null>(null);
 
+  // ۱) گرفتن لیست محصولات
   useEffect(() => {
     (async () => {
       try {
         setError(null);
+        const list = await getProducts();
+        setProducts(list);
+        if (list.length > 0) {
+          // product_id را به‌صورت string در selectedSku نگه می‌داریم
+          setSelectedSku(String(list[0].product_id));
+        }
+      } catch (e: any) {
+        console.error("getProducts error:", e);
+        setError(e?.message || "خطا در دریافت لیست محصولات");
+      }
+    })();
+  }, []);
+
+  // ۲) گرفتن اینسایت‌ها براساس محصول انتخاب‌شده
+  useEffect(() => {
+    if (!selectedSku) return;
+
+    (async () => {
+      try {
+        setError(null);
+        setProfit(null);
+        setSlow(null);
+        setBreakeven(null);
+        setGolden(null);
+        setRevenue(null);
+        setDiscount(null);
+        setRestock(null);
+        setSpeed(null);
+        setComments(null);
+
         const [
           p,
           s,
@@ -61,6 +91,7 @@ export default function InsightsDashboard() {
           getSpeedCompare(selectedSku),
           getCommentAnalysis(selectedSku),
         ]);
+
         setProfit(p);
         setSlow(s);
         setBreakeven(b);
@@ -81,14 +112,16 @@ export default function InsightsDashboard() {
     return (
       <div className="mt-4">
         <div className="bg-red-900/40 border border-red-700 text-red-100 text-sm rounded-2xl px-4 py-3">
-          <div className="font-semibold mb-1">خطا در دریافت داده‌های تحلیلی</div>
+          <div className="font-semibold mb-1">خطا در داده‌ها</div>
           <div className="break-all">{error}</div>
         </div>
       </div>
     );
   }
 
+  // اگر هنوز محصولات یا اینسایت‌ها لود نشده‌اند → اسکلت
   if (
+    !selectedSku ||
     !profit ||
     !slow ||
     !breakeven ||
@@ -100,29 +133,46 @@ export default function InsightsDashboard() {
     !comments
   ) {
     return (
-      <div className="mt-4 grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
-        {Array.from({ length: 6 }).map((_, i) => (
-          <div
-            key={i}
-            className="bg-gray-800 p-4 rounded-2xl border border-gray-700 animate-pulse"
-          >
-            <div className="h-4 w-1/2 bg-gray-700 rounded mb-4" />
-            <div className="space-y-2">
-              <div className="h-3 bg-gray-700 rounded w-5/6" />
-              <div className="h-3 bg-gray-700 rounded w-2/3" />
-              <div className="h-3 bg-gray-700 rounded w-4/5" />
+      <div className="space-y-6 mt-8">
+        <div className="flex justify-between items-center">
+          <div className="h-6 w-48 bg-gray-800 rounded" />
+          <div className="h-8 w-64 bg-gray-800 rounded" />
+        </div>
+        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
+          {Array.from({ length: 6 }).map((_, i) => (
+            <div
+              key={i}
+              className="bg-gray-800 p-4 rounded-2xl border border-gray-700 animate-pulse"
+            >
+              <div className="h-4 w-1/2 bg-gray-700 rounded mb-4" />
+              <div className="space-y-2">
+                <div className="h-3 bg-gray-700 rounded w-5/6" />
+                <div className="h-3 bg-gray-700 rounded w-2/3" />
+                <div className="h-3 bg-gray-700 rounded w-4/5" />
+              </div>
             </div>
-          </div>
-        ))}
+          ))}
+        </div>
       </div>
     );
   }
 
+  const selectedProduct = products.find(
+    (p) => p.product_id === selectedSku
+  );
+
   return (
     <div className="space-y-8 mt-8">
-      {/* هدر و انتخاب محصول */}
+      {/* هدر + انتخاب محصول */}
       <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-3">
-        <h2 className="text-2xl font-semibold">🔍 تحلیل‌های هوشمند (Mock Data)</h2>
+        <div>
+          <h2 className="text-2xl font-semibold">🔍 تحلیل‌های هوشمند (Data)</h2>
+          {selectedProduct && (
+            <p className="text-sm text-gray-400 mt-1">
+              {selectedProduct.title} (ID: {selectedProduct.product_id})
+            </p>
+          )}
+        </div>
 
         <div className="flex items-center gap-2 text-sm">
           <span className="text-gray-400">محصول انتخاب‌شده:</span>
@@ -131,9 +181,9 @@ export default function InsightsDashboard() {
             value={selectedSku}
             onChange={(e) => setSelectedSku(e.target.value)}
           >
-            {PRODUCTS.map((p) => (
-              <option key={p.sku} value={p.sku}>
-                {p.label}
+            {products.map((p) => (
+              <option key={p.product_id} value={p.product_id}>
+                {p.title} (ID: {p.product_id})
               </option>
             ))}
           </select>
@@ -144,7 +194,7 @@ export default function InsightsDashboard() {
       <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
         {/* 1. حاشیه سود */}
         <MetricCard title="۱. حاشیه سود واقعی پس از کمیسیون">
-          <StatRow label="SKU" value={profit.sku} />
+          <StatRow label="SKU / ID" value={profit.sku} />
           <StatRow label="نام محصول" value={profit.title} />
           <StatRow
             label="قیمت فروش"

@@ -4,6 +4,7 @@ from rest_framework_simplejwt.views import TokenObtainPairView, TokenRefreshView
 from .views_auth_seller import login_with_seller_token
 from .views_dk import seller_profile
 from .views_insights import (
+#    products_list,
     profit_margin,
     slow_movers,
     breakeven,
@@ -21,6 +22,7 @@ from .views_settings import seller_settings
 urlpatterns = [
     path("auth/seller/login/", login_with_seller_token),  # POST
     path("dk/profile/", seller_profile),  
+#    path("insights/products/", products_list),    
     path('auth/login/', TokenObtainPairView.as_view(), name='token_obtain_pair'),
     path('auth/refresh/', TokenRefreshView.as_view(), name='token_refresh'),
     path("settings/", seller_settings, name="seller_settings"),

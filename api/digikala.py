@@ -2,6 +2,33 @@ import requests
 from typing import Dict, Any
 from django.conf import settings
 
+
+# api/digikala.py
+
+import requests
+
+
+# ---------- Custom Exceptions ----------
+class DigikalaAPIError(Exception):
+    """Raised when Digikala API returns an error or unexpected response."""
+    pass
+
+
+class AuthFailedError(Exception):
+    """Raised when authentication with Digikala API fails."""
+    pass
+
+
+# ---------- Placeholder (for future real Digikala connection) ----------
+
+def get_profile_with_user_token(token: str):
+    """
+    در مرحله فعلی از این استفاده نمیشود،
+    ولی بعداً برای اتصال واقعی به دیجی‌کالا اینجا را تکمیل می‌کنی.
+    """
+    raise NotImplementedError("Real Digikala integration is not enabled yet.")
+
+
 DK_BASE = getattr(settings, "DK_SELLER_BASE", "https://seller.digikala.com/api/v1")
 TIMEOUT = 12
 

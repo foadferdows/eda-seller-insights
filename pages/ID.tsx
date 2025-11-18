@@ -11,31 +11,22 @@ import {
   getCommentAnalysis,
 } from "../services/dk";
 
+import { MetricCard, StatRow } from "../components/ui/MetricCard";
+import type { ProfitMargin, SlowMovers } from "../types/insights";
+
+const PRODUCTS = [
+  { sku: "A-101", label: "A-101 – قهوه اسپرسو تک‌خاستگاه" },
+  { sku: "B-220", label: "B-220 – ماگ سرامیکی آبی" },
+  { sku: "C-111", label: "C-111 – چای ماسالا ۲۵۰ گرمی" },
+];
+
 type AnyObj = Record<string, any>;
 
-const Card: React.FC<{ title: string; children: React.ReactNode }> = ({
-  title,
-  children,
-}) => (
-  <div className="bg-gray-800 p-4 rounded-2xl border border-gray-700 shadow-lg">
-    <h3 className="text-lg font-semibold mb-3 text-gray-100">{title}</h3>
-    {children}
-  </div>
-);
-
-const StatRow: React.FC<{ label: string; value: React.ReactNode }> = ({
-  label,
-  value,
-}) => (
-  <div className="flex justify-between text-sm py-1">
-    <span className="text-gray-400">{label}</span>
-    <span className="text-gray-100 font-medium">{value}</span>
-  </div>
-);
-
 export default function InsightsDashboard() {
-  const [profit, setProfit] = useState<AnyObj | null>(null);
-  const [slow, setSlow] = useState<AnyObj | null>(null);
+  const [selectedSku, setSelectedSku] = useState<string>(PRODUCTS[0].sku);
+
+  const [profit, setProfit] = useState<ProfitMargin | null>(null);
+  const [slow, setSlow] = useState<SlowMovers | null>(null);
   const [breakeven, setBreakeven] = useState<AnyObj | null>(null);
   const [golden, setGolden] = useState<AnyObj | null>(null);
   const [revenue, setRevenue] = useState<AnyObj | null>(null);
@@ -48,6 +39,7 @@ export default function InsightsDashboard() {
   useEffect(() => {
     (async () => {
       try {
+        setError(null);
         const [
           p,
           s,
@@ -59,15 +51,15 @@ export default function InsightsDashboard() {
           sp,
           c,
         ] = await Promise.all([
-          getProfitMargin(),
-          getSlowMovers(),
-          getBreakeven(),
-          getGoldenTimes(),
-          getRevenueForecast(),
-          getDiscountCompetition(),
-          getRestockTime(),
-          getSpeedCompare(),
-          getCommentAnalysis(),
+          getProfitMargin(selectedSku),
+          getSlowMovers(selectedSku),
+          getBreakeven(selectedSku),
+          getGoldenTimes(selectedSku),
+          getRevenueForecast(selectedSku),
+          getDiscountCompetition(selectedSku),
+          getRestockTime(selectedSku),
+          getSpeedCompare(selectedSku),
+          getCommentAnalysis(selectedSku),
         ]);
         setProfit(p);
         setSlow(s);
@@ -83,7 +75,7 @@ export default function InsightsDashboard() {
         setError(e?.message || "خطا در دریافت داده‌های تحلیلی");
       }
     })();
-  }, []);
+  }, [selectedSku]);
 
   if (error) {
     return (
@@ -95,7 +87,6 @@ export default function InsightsDashboard() {
       </div>
     );
   }
-
 
   if (
     !profit ||
@@ -127,14 +118,32 @@ export default function InsightsDashboard() {
     );
   }
 
-
   return (
     <div className="space-y-8 mt-8">
-      <h2 className="text-2xl font-semibold">🔍 تحلیل‌های هوشمند (Mock Data)</h2>
+      {/* هدر و انتخاب محصول */}
+      <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-3">
+        <h2 className="text-2xl font-semibold">🔍 تحلیل‌های هوشمند (Mock Data)</h2>
 
+        <div className="flex items-center gap-2 text-sm">
+          <span className="text-gray-400">محصول انتخاب‌شده:</span>
+          <select
+            className="bg-gray-900 border border-gray-700 rounded-lg px-3 py-1.5 text-sm text-gray-100 focus:outline-none focus:border-emerald-500"
+            value={selectedSku}
+            onChange={(e) => setSelectedSku(e.target.value)}
+          >
+            {PRODUCTS.map((p) => (
+              <option key={p.sku} value={p.sku}>
+                {p.label}
+              </option>
+            ))}
+          </select>
+        </div>
+      </div>
+
+      {/* کارت‌های اینسایت */}
       <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
         {/* 1. حاشیه سود */}
-        <Card title="۱. حاشیه سود واقعی پس از کمیسیون">
+        <MetricCard title="۱. حاشیه سود واقعی پس از کمیسیون">
           <StatRow label="SKU" value={profit.sku} />
           <StatRow label="نام محصول" value={profit.title} />
           <StatRow
@@ -161,11 +170,11 @@ export default function InsightsDashboard() {
             label="حاشیه سود"
             value={`${profit.margin_pct}%`}
           />
-        </Card>
+        </MetricCard>
 
         {/* 2. محصولات کم‌تحرک */}
-        <Card title="۲. محصولات کم‌تحرک و پیشنهاد خروج">
-          {slow.items.map((it: AnyObj) => (
+        <MetricCard title="۲. محصولات کم‌تحرک و پیشنهاد خروج">
+          {slow.items.map((it) => (
             <div
               key={it.sku}
               className="mb-3 border-b border-gray-700 pb-2 last:border-0 last:pb-0"
@@ -194,10 +203,10 @@ export default function InsightsDashboard() {
               <div className="text-xs text-gray-400 mt-1">{it.reason}</div>
             </div>
           ))}
-        </Card>
+        </MetricCard>
 
         {/* 3. نقطه سر به سر */}
-        <Card title="۳. نقطه سر به سر محصول">
+        <MetricCard title="۳. نقطه سر به سر محصول">
           <StatRow label="نام محصول" value={breakeven.title} />
           <StatRow
             label="هزینه ثابت"
@@ -223,10 +232,10 @@ export default function InsightsDashboard() {
             label="پیشرفت به سمت سر به سر"
             value={`${breakeven.progress_pct}%`}
           />
-        </Card>
+        </MetricCard>
 
         {/* 5. زمان‌های طلایی فروش */}
-        <Card title="۵. زمان‌های طلایی فروش">
+        <MetricCard title="۵. زمان‌های طلایی فروش">
           <StatRow label="نام محصول" value={golden.title} />
           <StatRow
             label="بهترین ساعات"
@@ -246,10 +255,10 @@ export default function InsightsDashboard() {
               ))}
             </ul>
           </div>
-        </Card>
+        </MetricCard>
 
         {/* 6. پیش‌بینی درآمد ماه */}
-        <Card title="۶. پیش‌بینی درآمد ماه">
+        <MetricCard title="۶. پیش‌بینی درآمد ماه">
           <StatRow label="ماه جاری" value={revenue.current_month} />
           <StatRow
             label="درآمد تا الان"
@@ -277,10 +286,10 @@ export default function InsightsDashboard() {
             label="اعتماد مدل"
             value={`${Math.round(revenue.confidence * 100)}%`}
           />
-        </Card>
+        </MetricCard>
 
         {/* 10. تخفیف مؤثر نسبت به رقبا */}
-        <Card title="۱۰. تخفیف مؤثر نسبت به رقبا">
+        <MetricCard title="۱۰. تخفیف مؤثر نسبت به رقبا">
           <StatRow
             label="قیمت شما"
             value={`${discount.your_price.toLocaleString()} تومان`}
@@ -315,10 +324,10 @@ export default function InsightsDashboard() {
                 : discount.position
             }
           />
-        </Card>
+        </MetricCard>
 
         {/* 14. زمان تأمین موجودی */}
-        <Card title="۱۴. پیش‌بینی زمان تأمین موجودی">
+        <MetricCard title="۱۴. پیش‌بینی زمان تأمین موجودی">
           <StatRow label="نام محصول" value={restock.title} />
           <StatRow
             label="میانگین فروش روزانه"
@@ -344,10 +353,10 @@ export default function InsightsDashboard() {
             label="مقدار سفارش پیشنهادی"
             value={restock.recommended_order_qty}
           />
-        </Card>
+        </MetricCard>
 
         {/* 17. مقایسه سرعت فروش جدید/قدیم */}
-        <Card title="۱۷. مقایسه سرعت فروش محصول جدید و قدیمی">
+        <MetricCard title="۱۷. مقایسه سرعت فروش محصول جدید و قدیمی">
           <StatRow label="محصول قدیمی" value={speed.old_title} />
           <StatRow
             label="سرعت فروش قدیمی (واحد/روز)"
@@ -370,10 +379,10 @@ export default function InsightsDashboard() {
                 : speed.conclusion
             }
           />
-        </Card>
+        </MetricCard>
 
         {/* 11. تحلیل کامنت‌ها */}
-        <Card title="۱۱. تحلیل تجربه مشتری از کامنت‌ها">
+        <MetricCard title="۱۱. تحلیل تجربه مشتری از کامنت‌ها">
           <StatRow
             label="نظرات مثبت"
             value={`${comments.positive_pct}%`}
@@ -414,7 +423,7 @@ export default function InsightsDashboard() {
               ))}
             </ul>
           </div>
-        </Card>
+        </MetricCard>
       </div>
     </div>
   );
