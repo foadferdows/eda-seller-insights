@@ -34,6 +34,73 @@ def _safe_int(value: Any, default: int = 0) -> int:
         return default
 
 
+from rest_framework.decorators import api_view
+from rest_framework.response import Response
+from rest_framework import status
+
+from .digikala import get_products_from_dk
+from .data_loader import (
+    load_fake_products,
+    load_fake_sales,
+    load_fake_inventory,
+    load_fake_pricing,
+    load_fake_reviews,
+)
+
+@api_view(["POST"])
+def insights_products(request):
+    """
+    اگر توکن FAKE باشد → دیتا از CSV خوانده می‌شود
+    اگر واقعی باشد → دیتا از دیجی‌کالا خوانده می‌شود
+    """
+
+    token = request.data.get("seller_token")
+    if not token:
+        return Response(
+            {"error": "seller_token is required"},
+            status=status.HTTP_400_BAD_REQUEST
+        )
+
+    # حالت تست (FAKE)
+    if token == "FAKE_SELLER_TOKEN":
+        products = load_fake_products()
+        sales = load_fake_sales()
+        inventory = load_fake_inventory()
+        pricing = load_fake_pricing()
+        reviews = load_fake_reviews()
+
+        # یکپارچه‌سازی داده‌ها
+        result = []
+        for p in products:
+            pid = p["product_id"]
+
+            result.append({
+                "product_id": pid,
+                "title": p.get("title"),
+                "category": p.get("category"),
+                "brand": p.get("brand"),
+                "cost_price": p.get("cost_price"),
+                "selling_price": p.get("selling_price"),
+
+                "sales": [s for s in sales if s["product_id"] == pid],
+                "inventory": next((i for i in inventory if i["product_id"] == pid), None),
+                "pricing_history": [h for h in pricing if h["product_id"] == pid],
+                "reviews": [r for r in reviews if r["product_id"] == pid],
+            })
+
+        return Response(result)
+
+    # حالت واقعی → درخواست به دیجی‌کالا
+    try:
+        data = get_products_from_dk(token)
+        return Response(data)
+    except Exception as e:
+        return Response(
+            {"error": str(e)},
+            status=status.HTTP_500_INTERNAL_SERVER_ERROR
+        )
+
+
 def _safe_float(value: Any, default: float = 0.0) -> float:
     try:
         if value is None or value == "":
@@ -88,7 +155,9 @@ def _load_existing_data() -> ExistingData:
         s["quantity"] = _safe_int(s.get("quantity"))
         s["unit_price"] = _safe_float(s.get("unit_price"))
         s["discount_pct"] = _safe_float(s.get("discount_pct"))
-        s["date"] = _parse_date(s.get("date"))
+        # s["date"] = _parse_date(s.get("sale_date"))
+        s["date"] = _parse_date(s.get("sale_date") or s.get("date"))
+
 
     for inv in inventory:
         inv["current_stock"] = _safe_int(inv.get("current_stock"))
@@ -239,68 +308,340 @@ def profit_margin(request):
 # ============================================================
 
 
+
+# from collections import defaultdict
+# from datetime import date
+
+# def _compute_slow_movers(
+#     products,
+#     sales,
+#     extra_cost_pct: float = 10.0,
+#     min_weekly_sales: int = 3,
+#     min_margin_pct: float = 10.0,
+#     min_days_active: int = 14,
+#     sku_filter: str | None = None,
+# ):
+#     """
+#     محاسبه محصولات کم‌تحرک (slow-mover):
+
+#     - فقط محصولاتی را نگه می‌داریم که سرعت فروش هفتگی‌شان کمتر از min_weekly_sales باشد.
+#     - اگر حاشیه سود هم از min_margin_pct کمتر باشد → پیشنهاد «حذف/خروج».
+#     - اگر حاشیه سود مناسب باشد ولی فروش کم باشد → پیشنهاد «تخفیف برای خروج موجودی».
+#     - محصولات بسیار تازه (کمتر از min_days_active روز) نادیده گرفته می‌شوند.
+#     - اگر sku_filter داده شود، فقط همان محصول بررسی می‌شود.
+#     """
+#     products_index = {p["product_id"]: p for p in products}
+
+#     totals_qty = defaultdict(int)
+#     first_date: dict[str, date] = {}
+#     last_date: dict[str, date] = {}
+
+#     # جمع‌کردن فروش‌ها بر اساس محصول
+#     for s in sales:
+#         pid = s["product_id"]
+
+#         if sku_filter and pid != sku_filter:
+#             continue
+
+#         d = s.get("date") or s.get("sale_date")
+#         if isinstance(d, str):
+#             d = date.fromisoformat(d)
+
+#         qty = int(s.get("quantity", 0) or 0)
+#         totals_qty[pid] += qty
+
+#         if pid not in first_date or d < first_date[pid]:
+#             first_date[pid] = d
+#         if pid not in last_date or d > last_date[pid]:
+#             last_date[pid] = d
+
+#     items = []
+
+#     for pid, product in products_index.items():
+#         if sku_filter and pid != sku_filter:
+#             continue
+
+#         total_qty = totals_qty.get(pid, 0)
+
+#         # اگر اصلاً فروشی ثبت نشده، بازه زمانی نداریم
+#         if pid in first_date and pid in last_date:
+#             days_active = max((last_date[pid] - first_date[pid]).days, 1)
+#         else:
+#             days_active = 1
+
+#         # نادیده گرفتن محصولات خیلی تازه
+#         if days_active < min_days_active:
+#             continue
+
+#         weeks_active = max(days_active / 7.0, 1.0)
+#         weekly_sales = total_qty / weeks_active
+
+#         # فقط کم‌تحرک‌ها
+#         if weekly_sales >= min_weekly_sales:
+#             continue
+
+#         # حاشیه سود (همان منطق عمومی)
+#         margin_info = _margin_for_product(
+#             product,
+#             extra_cost_pct=extra_cost_pct,
+#             commission_pct=19.0,  # فعلاً ثابت برای داده فیک
+#         )
+#         margin_pct = float(margin_info.get("margin_pct") or 0.0)
+
+#         # شاخص سودآوری بر اساس فرمول:
+#         # profitability_index = (میانگین فروش هفتگی × حاشیه سود واحد) ÷ میانگین موجودی
+#         selling_price = float(product.get("selling_price") or 0) or 1.0
+#         # حاشیه سود واحد به تومان
+#         profit_per_unit = (margin_pct / 100.0) * selling_price
+
+#         stock = float(product.get("stock", 0) or 0.0)
+#         avg_inventory = max(stock, 1.0)  # برای جلوگیری از تقسیم بر صفر
+
+#         profitability_index = (weekly_sales * profit_per_unit) / avg_inventory
+
+#         if margin_pct < min_margin_pct:
+#             action = "remove"
+#             reason = "سرعت فروش پایین و حاشیه سود ضعیف؛ پیشنهاد خروج یا جایگزینی محصول."
+#         else:
+#             action = "discount"
+#             reason = "سرعت فروش پایین ولی حاشیه سود قابل قبول؛ پیشنهاد تخفیف برای خروج موجودی."
+
+#         items.append(
+#             {
+#                 "product_id": pid,
+#                 "sku": pid,  # در دیتای فیک sku = product_id
+#                 "title": product.get("title"),
+#                 "category": product.get("category"),
+#                 "weekly_sales": round(weekly_sales, 2),
+#                 "total_sold": int(total_qty),
+#                 "margin_pct": round(margin_pct, 1),
+#                 "stock": stock,
+#                 "days_active": days_active,
+#                 "profit_per_unit": round(profit_per_unit, 2),
+#                 "profitability_index": round(profitability_index, 2),
+#                 "recommendation": action,
+#                 "reason": reason,
+#             }
+#         )
+
+#     # کندترین‌ها اول
+#     items_sorted = sorted(items, key=lambda x: x["weekly_sales"])
+
+#     return {
+#         "thresholds": {
+#             "min_weekly_sales": min_weekly_sales,
+#             "min_margin_pct": min_margin_pct,
+#             "min_days_active": min_days_active,
+#             "extra_cost_pct": extra_cost_pct,
+#         },
+#         "items": items_sorted[:20],
+#     }
+
+
+# @api_view(["GET"])
+# def slow_movers(request: Request):
+#     """
+#     محصولات کم‌تحرک:
+
+#     - محصولاتی که سرعت فروش هفتگی‌شان از حد آستانه کمتر است.
+#     - آستانه‌ها از SellerSettings خوانده می‌شود و در UI (تب Settings) قابل تنظیم است.
+#     - اگر کوئری‌پارامتر ?sku= داده شود، فقط همان محصول بررسی و برگردانده می‌شود.
+#     """
+#     if not settings.USE_FAKE_SELLER:
+#         # در آینده: همین متد را روی داده واقعی دیجی‌کالا صدا می‌زنیم.
+#         return Response(
+#             {"detail": "Not implemented for real Digikala data yet."},
+#             status=status.HTTP_501_NOT_IMPLEMENTED,
+#         )
+
+#     data = _load_existing_data()
+#     settings_obj = _get_seller_settings(request.user)
+
+#     # از تنظیمات کاربر بخوان
+#     extra_cost_pct = float(getattr(settings_obj, "extra_cost_pct", 0) or 0)
+#     min_weekly_sales = int(getattr(settings_obj, "slow_mover_min_speed", 3) or 3)
+#     min_margin_pct = float(getattr(settings_obj, "slow_mover_min_margin", 10.0) or 10.0)
+
+#     sku_filter = request.GET.get("sku") or None
+
+#     result = _compute_slow_movers(
+#         data.products,
+#         data.sales,
+#         extra_cost_pct=extra_cost_pct,
+#         min_weekly_sales=min_weekly_sales,
+#         min_margin_pct=min_margin_pct,
+#         min_days_active=14,  # اگر خواستی می‌تونیم این رو هم بعداً قابل تنظیم کنیم
+#         sku_filter=sku_filter,
+#     )
+
+#     return Response(result)
+
+from collections import defaultdict
+from datetime import date
+
+def _compute_slow_movers(
+    products,
+    sales,
+    extra_cost_pct: float = 10.0,
+    min_weekly_sales: int = 3,
+    min_margin_pct: float = 10.0,
+    min_days_active: int = 14,
+    sku_filter: str | None = None,
+):
+    """
+    محاسبه محصولات کم‌تحرک (slow-mover):
+
+    - فقط محصولاتی را نگه می‌داریم که سرعت فروش هفتگی‌شان کمتر از min_weekly_sales باشد.
+    - اگر حاشیه سود هم از min_margin_pct کمتر باشد → پیشنهاد «حذف/خروج».
+    - اگر حاشیه سود مناسب باشد ولی فروش کم باشد → پیشنهاد «تخفیف برای خروج موجودی».
+    - محصولات بسیار تازه (کمتر از min_days_active روز) نادیده گرفته می‌شوند.
+    - اگر sku_filter داده شود، فقط همان محصول بررسی می‌شود.
+    """
+    products_index = {p["product_id"]: p for p in products}
+
+    totals_qty = defaultdict(int)
+    first_date: dict[str, date] = {}
+    last_date: dict[str, date] = {}
+
+    # جمع‌کردن فروش‌ها بر اساس محصول
+    for s in sales:
+        pid = s["product_id"]
+
+        if sku_filter and pid != sku_filter:
+            continue
+
+        d = s.get("date") or s.get("sale_date")
+        if isinstance(d, str):
+            d = date.fromisoformat(d)
+
+        qty = int(s.get("quantity", 0) or 0)
+        totals_qty[pid] += qty
+
+        if pid not in first_date or d < first_date[pid]:
+            first_date[pid] = d
+        if pid not in last_date or d > last_date[pid]:
+            last_date[pid] = d
+
+    items = []
+
+    for pid, product in products_index.items():
+        if sku_filter and pid != sku_filter:
+            continue
+
+        total_qty = totals_qty.get(pid, 0)
+
+        # اگر اصلاً فروشی ثبت نشده، بازه زمانی نداریم
+        if pid in first_date and pid in last_date:
+            days_active = max((last_date[pid] - first_date[pid]).days, 1)
+        else:
+            days_active = 1
+
+        # نادیده گرفتن محصولات خیلی تازه
+        if days_active < min_days_active:
+            continue
+
+        weeks_active = max(days_active / 7.0, 1.0)
+        weekly_sales = total_qty / weeks_active
+
+        # فقط کم‌تحرک‌ها
+        if weekly_sales >= min_weekly_sales:
+            continue
+
+        # حاشیه سود (همان منطق عمومی)
+        margin_info = _margin_for_product(
+            product,
+            extra_cost_pct=extra_cost_pct,
+            commission_pct=19.0,  # فعلاً ثابت برای داده فیک
+        )
+        margin_pct = float(margin_info.get("margin_pct") or 0.0)
+
+        # شاخص سودآوری بر اساس فرمول:
+        # profitability_index = (میانگین فروش هفتگی × حاشیه سود واحد) ÷ میانگین موجودی
+        selling_price = float(product.get("selling_price") or 0) or 1.0
+        # حاشیه سود واحد به تومان
+        profit_per_unit = (margin_pct / 100.0) * selling_price
+
+        stock = float(product.get("stock", 0) or 0.0)
+        avg_inventory = max(stock, 1.0)  # برای جلوگیری از تقسیم بر صفر
+
+        profitability_index = (weekly_sales * profit_per_unit) / avg_inventory
+
+        if margin_pct < min_margin_pct:
+            action = "remove"
+            reason = "سرعت فروش پایین و حاشیه سود ضعیف؛ پیشنهاد خروج یا جایگزینی محصول."
+        else:
+            action = "discount"
+            reason = "سرعت فروش پایین ولی حاشیه سود قابل قبول؛ پیشنهاد تخفیف برای خروج موجودی."
+
+        items.append(
+            {
+                "product_id": pid,
+                "sku": pid,  # در دیتای فیک sku = product_id
+                "title": product.get("title"),
+                "category": product.get("category"),
+                "weekly_sales": round(weekly_sales, 2),
+                "total_sold": int(total_qty),
+                "margin_pct": round(margin_pct, 1),
+                "stock": stock,
+                "days_active": days_active,
+                "profit_per_unit": round(profit_per_unit, 2),
+                "profitability_index": round(profitability_index, 2),
+                "recommendation": action,
+                "reason": reason,
+            }
+        )
+
+    # کندترین‌ها اول
+    items_sorted = sorted(items, key=lambda x: x["weekly_sales"])
+
+    return {
+        "thresholds": {
+            "min_weekly_sales": min_weekly_sales,
+            "min_margin_pct": min_margin_pct,
+            "min_days_active": min_days_active,
+            "extra_cost_pct": extra_cost_pct,
+        },
+        "items": items_sorted[:20],
+    }
+
+
 @api_view(["GET"])
-@permission_classes([IsAuthenticated])
-def slow_movers(request):
-    if not getattr(settings, "USE_FAKE_SELLER", False):
+def slow_movers(request: Request):
+    """
+    محصولات کم‌تحرک:
+
+    - محصولاتی که سرعت فروش هفتگی‌شان از حد آستانه کمتر است.
+    - آستانه‌ها از SellerSettings خوانده می‌شود و در UI (تب Settings) قابل تنظیم است.
+    - اگر کوئری‌پارامتر ?sku= داده شود، فقط همان محصول بررسی و برگردانده می‌شود.
+    """
+    if not settings.USE_FAKE_SELLER:
+        # در آینده: همین متد را روی داده واقعی دیجی‌کالا صدا می‌زنیم.
         return Response(
-            {"detail": "Real Digikala insights are not implemented yet."},
+            {"detail": "Not implemented for real Digikala data yet."},
             status=status.HTTP_501_NOT_IMPLEMENTED,
         )
 
     data = _load_existing_data()
     settings_obj = _get_seller_settings(request.user)
 
-    extra_cost_pct = float(settings_obj.extra_cost_pct or 0)
-    min_weekly_sales = int(settings_obj.slow_mover_min_weekly_sales or 3)
-    min_margin_pct = float(settings_obj.slow_mover_min_profit_margin_pct or 10.0)
+    # از تنظیمات کاربر بخوان
+    extra_cost_pct = float(getattr(settings_obj, "extra_cost_pct", 0) or 0)
+    min_weekly_sales = int(getattr(settings_obj, "slow_mover_min_speed", 3) or 3)
+    min_margin_pct = float(getattr(settings_obj, "slow_mover_min_margin", 10.0) or 10.0)
 
-    products_index = _build_index_by_product_id(data.products)
-    totals_qty, _, min_date, max_date = _sales_by_product(data.sales)
+    sku_filter = request.GET.get("sku") or None
 
-    items = []
-    for pid, product in products_index.items():
-        total_qty = totals_qty.get(pid, 0)
-        if pid in min_date and pid in max_date:
-            days = max((max_date[pid] - min_date[pid]).days, 1)
-            weeks = max(days / 7.0, 1.0)
-        else:
-            weeks = 1.0
+    result = _compute_slow_movers(
+        data.products,
+        data.sales,
+        extra_cost_pct=extra_cost_pct,
+        min_weekly_sales=min_weekly_sales,
+        min_margin_pct=min_margin_pct,
+        min_days_active=14,  # اگر خواستی می‌تونیم این رو هم بعداً قابل تنظیم کنیم
+        sku_filter=sku_filter,
+    )
 
-        weekly_speed = total_qty / weeks
-
-        margin = _margin_for_product(product, extra_cost_pct)
-        margin_pct = margin["margin_pct"]
-
-        if weekly_speed < min_weekly_sales and margin_pct < min_margin_pct:
-            action = "remove"
-        elif weekly_speed < min_weekly_sales:
-            action = "discount"
-        else:
-            action = "keep"
-
-        items.append(
-            {
-                "product_id": pid,
-                "title": product.get("title"),
-                "category": product.get("category"),
-                "weekly_speed": round(weekly_speed, 2),
-                "margin_pct": round(margin_pct, 2),
-                "action": action,
-            }
-        )
-
-    # کندترین‌ها در ابتدا
-    items_sorted = sorted(items, key=lambda x: x["weekly_speed"])
-
-    response = {
-        "thresholds": {
-            "min_weekly_sales": min_weekly_sales,
-            "min_margin_pct": min_margin_pct,
-        },
-        "items": items_sorted[:20],
-    }
-    return Response(response)
+    return Response(result)
 
 
 # ============================================================
@@ -468,9 +809,27 @@ def revenue_forecast(request):
 # ============================================================
 
 
+# ============================================================
+# 6) Discount vs competitors (تخفیف مؤثر نسبت به رقبا)
+# ============================================================
+
 @api_view(["GET"])
 @permission_classes([IsAuthenticated])
 def discount_competition(request):
+    """
+    تخفیف مؤثر نسبت به رقبا برای یک محصول (SKU انتخاب‌شده):
+
+    فرمول:
+      تخفیف مؤثر = (قیمت رقیب - قیمت نهایی شما) ÷ قیمت رقیب
+
+    خروجی با UI هماهنگ است:
+      - your_price
+      - your_discount_pct
+      - effective_price
+      - effective_discount_vs_cheapest_pct  (هرچه بزرگ‌تر، شما جذاب‌تر)
+      - position: "cheapest" / "in_line" / "more_expensive"
+      - competitors: [{name, price}]
+    """
     if not getattr(settings, "USE_FAKE_SELLER", False):
         return Response(
             {"detail": "Real Digikala insights are not implemented yet."},
@@ -478,54 +837,139 @@ def discount_competition(request):
         )
 
     data = _load_existing_data()
-    if not data.pricing:
-        return Response({"detail": "No pricing data."}, status=status.HTTP_400_BAD_REQUEST)
-
     products_index = _build_index_by_product_id(data.products)
 
-    items = []
-    for pr in data.pricing:
-        pid = pr.get("product_id")
-        product = products_index.get(pid)
-        if not product:
-            continue
+    sku = request.GET.get("sku")
+    if not sku:
+        return Response(
+            {"detail": "sku query param is required."},
+            status=status.HTTP_400_BAD_REQUEST,
+        )
 
-        your_price = _safe_float(pr.get("your_price"))
-        your_discount_pct = _safe_float(pr.get("your_discount_pct"))
-        effective_price = your_price * (1 - your_discount_pct / 100.0)
+    product = products_index.get(sku)
+    if not product:
+        return Response(
+            {"detail": "Product not found for given sku."},
+            status=status.HTTP_404_NOT_FOUND,
+        )
 
-        comp_min = _safe_float(pr.get("competitor_min_price"))
-        comp_avg = _safe_float(pr.get("competitor_avg_price"))
-        if comp_min <= 0:
-            position = "unknown"
-            diff_vs_min_pct = None
-        else:
-            diff_vs_min_pct = (effective_price - comp_min) / comp_min * 100.0
-            if diff_vs_min_pct < -2:
-                position = "cheapest"
-            elif diff_vs_min_pct <= 2:
-                position = "in_line"
-            else:
-                position = "more_expensive"
+    your_price = float(product.get("selling_price") or 0)
+    your_discount_pct = float(product.get("discount_pct") or 0)
+    effective_price = your_price * (1 - your_discount_pct / 100.0)
 
-        items.append(
+    # رقبا در دیتای فیک
+    comp_prices = [float(p) for p in product.get("competitor_prices", []) if p is not None]
+    if not comp_prices:
+        # اگر رقیب نداریم، فقط قیمت خودت را برگردان
+        return Response(
             {
-                "product_id": pid,
-                "title": product.get("title"),
                 "your_price": round(your_price, 2),
                 "your_discount_pct": your_discount_pct,
                 "effective_price": round(effective_price, 2),
-                "competitor_min_price": comp_min,
-                "competitor_avg_price": comp_avg,
-                "diff_vs_min_pct": round(diff_vs_min_pct, 2) if diff_vs_min_pct is not None else None,
-                "position": position,
+                "effective_discount_vs_cheapest_pct": None,
+                "position": "no_competitor",
+                "competitors": [],
             }
         )
 
-    # محصولاتی که خیلی گران‌تر از حداقل رقیب هستند در اول لیست
-    items.sort(key=lambda x: (x["diff_vs_min_pct"] if x["diff_vs_min_pct"] is not None else -999), reverse=True)
+    comp_min = min(comp_prices)
+    comp_avg = sum(comp_prices) / len(comp_prices) if comp_prices else 0
 
-    return Response({"items": items[:20]})
+    if comp_min > 0:
+        # فرمول: (قیمت رقیب - قیمت نهایی شما) / قیمت رقیب
+        eff_discount_vs_cheapest_pct = ((comp_min - effective_price) / comp_min) * 100.0
+    else:
+        eff_discount_vs_cheapest_pct = None
+
+    # تعیین جایگاه
+    if eff_discount_vs_cheapest_pct is None:
+        position = "unknown"
+    elif eff_discount_vs_cheapest_pct > 2:
+        # شما حداقل ~۲٪ ارزان‌تر از ارزان‌ترین رقیب هستی
+        position = "cheapest"
+    elif eff_discount_vs_cheapest_pct < -2:
+        # شما حداقل ~۲٪ گران‌تر از ارزان‌ترین رقیب هستی
+        position = "more_expensive"
+    else:
+        position = "in_line"
+
+    competitors_payload = [
+        {"name": "min_competitor_price", "price": round(comp_min, 2)},
+        {"name": "avg_competitor_price", "price": round(comp_avg, 2)},
+    ]
+
+    return Response(
+        {
+            "your_price": round(your_price, 2),
+            "your_discount_pct": your_discount_pct,
+            "effective_price": round(effective_price, 2),
+            "effective_discount_vs_cheapest_pct": round(eff_discount_vs_cheapest_pct, 2)
+            if eff_discount_vs_cheapest_pct is not None
+            else None,
+            "position": position,
+            "competitors": competitors_payload,
+        }
+    )
+
+
+# @api_view(["GET"])
+# @permission_classes([IsAuthenticated])
+# def discount_competition(request):
+#     if not getattr(settings, "USE_FAKE_SELLER", False):
+#         return Response(
+#             {"detail": "Real Digikala insights are not implemented yet."},
+#             status=status.HTTP_501_NOT_IMPLEMENTED,
+#         )
+
+#     data = _load_existing_data()
+#     if not data.pricing:
+#         return Response({"detail": "No pricing data."}, status=status.HTTP_400_BAD_REQUEST)
+
+#     products_index = _build_index_by_product_id(data.products)
+
+#     items = []
+#     for pr in data.pricing:
+#         pid = pr.get("product_id")
+#         product = products_index.get(pid)
+#         if not product:
+#             continue
+
+#         your_price = _safe_float(pr.get("your_price"))
+#         your_discount_pct = _safe_float(pr.get("your_discount_pct"))
+#         effective_price = your_price * (1 - your_discount_pct / 100.0)
+
+#         comp_min = _safe_float(pr.get("competitor_min_price"))
+#         comp_avg = _safe_float(pr.get("competitor_avg_price"))
+#         if comp_min <= 0:
+#             position = "unknown"
+#             diff_vs_min_pct = None
+#         else:
+#             diff_vs_min_pct = (effective_price - comp_min) / comp_min * 100.0
+#             if diff_vs_min_pct < -2:
+#                 position = "cheapest"
+#             elif diff_vs_min_pct <= 2:
+#                 position = "in_line"
+#             else:
+#                 position = "more_expensive"
+
+#         items.append(
+#             {
+#                 "product_id": pid,
+#                 "title": product.get("title"),
+#                 "your_price": round(your_price, 2),
+#                 "your_discount_pct": your_discount_pct,
+#                 "effective_price": round(effective_price, 2),
+#                 "competitor_min_price": comp_min,
+#                 "competitor_avg_price": comp_avg,
+#                 "diff_vs_min_pct": round(diff_vs_min_pct, 2) if diff_vs_min_pct is not None else None,
+#                 "position": position,
+#             }
+#         )
+
+#     # محصولاتی که خیلی گران‌تر از حداقل رقیب هستند در اول لیست
+#     items.sort(key=lambda x: (x["diff_vs_min_pct"] if x["diff_vs_min_pct"] is not None else -999), reverse=True)
+
+#     return Response({"items": items[:20]})
 
 
 # ============================================================
@@ -533,9 +977,70 @@ def discount_competition(request):
 # ============================================================
 
 
+# @api_view(["GET"])
+# @permission_classes([IsAuthenticated])
+# def restock_time(request):
+#     if not getattr(settings, "USE_FAKE_SELLER", False):
+#         return Response(
+#             {"detail": "Real Digikala insights are not implemented yet."},
+#             status=status.HTTP_501_NOT_IMPLEMENTED,
+#         )
+
+#     data = _load_existing_data()
+#     products_index = _build_index_by_product_id(data.products)
+#     inv_index = {inv["product_id"]: inv for inv in data.inventory if inv.get("product_id")}
+
+#     totals_qty, _, min_date, max_date = _sales_by_product(data.sales)
+
+#     items = []
+#     for pid, inv in inv_index.items():
+#         current_stock = _safe_int(inv.get("current_stock"))
+#         if pid in min_date and pid in max_date:
+#             days = max((max_date[pid] - min_date[pid]).days, 1)
+#         else:
+#             days = 30  # فرضی
+#         daily_sales = totals_qty.get(pid, 0) / days if days > 0 else 0.0
+#         days_to_stockout = current_stock / daily_sales if daily_sales > 0 else None
+
+#         reorder_point = _safe_int(inv.get("reorder_point"))
+#         supplier_lead = _safe_int(inv.get("supplier_lead_time_days"))
+
+#         items.append(
+#             {
+#                 "product_id": pid,
+#                 "title": products_index.get(pid, {}).get("title"),
+#                 "current_stock": current_stock,
+#                 "daily_sales": round(daily_sales, 2),
+#                 "days_to_stockout": round(days_to_stockout, 1) if days_to_stockout is not None else None,
+#                 "reorder_point": reorder_point,
+#                 "supplier_lead_time_days": supplier_lead,
+#             }
+#         )
+
+#     # محصولاتی که زودتر تمام می‌شوند بالاتر باشند
+#     items_with_eta = [x for x in items if x["days_to_stockout"] is not None]
+#     items_with_eta.sort(key=lambda x: x["days_to_stockout"])
+
+#     return Response({"items": items_with_eta[:20]})
+
+# ============================================================
+# 7) Restock time (inventory + sales)
+# ============================================================
+
 @api_view(["GET"])
 @permission_classes([IsAuthenticated])
 def restock_time(request):
+    """
+    پیش‌بینی زمان تأمین موجودی و نیاز به سفارش:
+
+    - daily_sales_avg: میانگین فروش روزانه
+    - days_to_stockout: چند روز دیگر موجودی تمام می‌شود
+    - supplier_lead_time_days: مدت‌زمان تأمین از تأمین‌کننده
+    - should_order: آیا باید همین حالا سفارش بدهم؟
+      (اگر زمان تمام شدن موجودی <= مدت تأمین)
+    - recommended_order_qty: پیشنهاد مقدار سفارش، بر اساس
+      هدف پوشش (lead time + 7 روز بافر)
+    """
     if not getattr(settings, "USE_FAKE_SELLER", False):
         return Response(
             {"detail": "Real Digikala insights are not implemented yet."},
@@ -544,40 +1049,71 @@ def restock_time(request):
 
     data = _load_existing_data()
     products_index = _build_index_by_product_id(data.products)
-    inv_index = {inv["product_id"]: inv for inv in data.inventory if inv.get("product_id")}
+    inv_index = {
+        inv["product_id"]: inv
+        for inv in data.inventory
+        if inv.get("product_id")
+    }
 
     totals_qty, _, min_date, max_date = _sales_by_product(data.sales)
 
-    items = []
-    for pid, inv in inv_index.items():
-        current_stock = _safe_int(inv.get("current_stock"))
-        if pid in min_date and pid in max_date:
-            days = max((max_date[pid] - min_date[pid]).days, 1)
-        else:
-            days = 30  # فرضی
-        daily_sales = totals_qty.get(pid, 0) / days if days > 0 else 0.0
-        days_to_stockout = current_stock / daily_sales if daily_sales > 0 else None
-
-        reorder_point = _safe_int(inv.get("reorder_point"))
-        supplier_lead = _safe_int(inv.get("supplier_lead_time_days"))
-
-        items.append(
-            {
-                "product_id": pid,
-                "title": products_index.get(pid, {}).get("title"),
-                "current_stock": current_stock,
-                "daily_sales": round(daily_sales, 2),
-                "days_to_stockout": round(days_to_stockout, 1) if days_to_stockout is not None else None,
-                "reorder_point": reorder_point,
-                "supplier_lead_time_days": supplier_lead,
-            }
+    sku = request.GET.get("sku")
+    if not sku:
+        return Response(
+            {"detail": "sku query param is required."},
+            status=status.HTTP_400_BAD_REQUEST,
         )
 
-    # محصولاتی که زودتر تمام می‌شوند بالاتر باشند
-    items_with_eta = [x for x in items if x["days_to_stockout"] is not None]
-    items_with_eta.sort(key=lambda x: x["days_to_stockout"])
+    inv = inv_index.get(sku)
+    product = products_index.get(sku)
+    if not inv or not product:
+        return Response(
+            {"detail": "Inventory or product not found for given sku."},
+            status=status.HTTP_404_NOT_FOUND,
+        )
 
-    return Response({"items": items_with_eta[:20]})
+    current_stock = _safe_int(inv.get("current_stock"))
+
+    if sku in min_date and sku in max_date:
+        days = max((max_date[sku] - min_date[sku]).days, 1)
+    else:
+        # اگر داده فروش نداریم، فرض کن ۳۰ روز
+        days = 30
+
+    total_sold = totals_qty.get(sku, 0)
+    daily_sales_avg = total_sold / days if days > 0 else 0.0
+
+    days_to_stockout = current_stock / daily_sales_avg if daily_sales_avg > 0 else None
+
+    supplier_lead = _safe_int(inv.get("supplier_lead_time_days"))
+    reorder_point = _safe_int(inv.get("reorder_point"))
+
+    # هدف پوشش موجودی: lead time + 7 روز بافر
+    target_cover_days = supplier_lead + 7 if supplier_lead > 0 else 14
+    target_stock = daily_sales_avg * target_cover_days
+    recommended_order_qty = max(int(round(target_stock - current_stock)), 0)
+
+    # شرط تصمیم سفارش:
+    # - اگر زمان تمام شدن موجودی وجود دارد و <= lead time
+    #   یا موجودی فعلی <= reorder_point
+    if days_to_stockout is not None and supplier_lead > 0:
+        should_order = days_to_stockout <= supplier_lead or current_stock <= reorder_point
+    else:
+        should_order = current_stock <= reorder_point
+
+    payload = {
+        "product_id": sku,
+        "title": product.get("title"),
+        "current_stock": current_stock,
+        "daily_sales_avg": round(daily_sales_avg, 2),
+        "days_to_stockout": round(days_to_stockout, 1) if days_to_stockout is not None else None,
+        "reorder_point": reorder_point,
+        "supplier_lead_time_days": supplier_lead,
+        "should_order": should_order,
+        "recommended_order_qty": recommended_order_qty,
+    }
+
+    return Response(payload)
 
 
 # ============================================================
@@ -585,9 +1121,66 @@ def restock_time(request):
 # ============================================================
 
 
+# @api_view(["GET"])
+# @permission_classes([IsAuthenticated])
+# def speed_compare(request):
+#     if not getattr(settings, "USE_FAKE_SELLER", False):
+#         return Response(
+#             {"detail": "Real Digikala insights are not implemented yet."},
+#             status=status.HTTP_501_NOT_IMPLEMENTED,
+#         )
+
+#     data = _load_existing_data()
+#     products_index = _build_index_by_product_id(data.products)
+#     totals_qty, _, min_date, max_date = _sales_by_product(data.sales)
+
+#     if not totals_qty:
+#         return Response({"detail": "No sales data."}, status=status.HTTP_400_BAD_REQUEST)
+
+#     # محصولی با فروش زیاد و محصولی با فروش کم را برای مقایسه انتخاب می‌کنیم
+#     best_pid = max(totals_qty.items(), key=lambda x: x[1])[0]
+#     worst_pid = min(totals_qty.items(), key=lambda x: x[1])[0]
+
+#     def _build_speed(pid):
+#         total_qty = totals_qty[pid]
+#         if pid in min_date and pid in max_date:
+#             days = max((max_date[pid] - min_date[pid]).days, 1)
+#         else:
+#             days = 30
+#         daily = total_qty / days
+#         weekly = daily * 7
+#         return {
+#             "product_id": pid,
+#             "title": products_index.get(pid, {}).get("title"),
+#             "daily_sales": round(daily, 2),
+#             "weekly_sales": round(weekly, 2),
+#             "total_units": total_qty,
+#         }
+
+#     response = {
+#         "fast": _build_speed(best_pid),
+#         "slow": _build_speed(worst_pid),
+#     }
+#     return Response(response)
+
+# ============================================================
+# 8) Speed compare (مقایسه سرعت فروش محصول جدید و قدیمی)
+# ============================================================
+
 @api_view(["GET"])
 @permission_classes([IsAuthenticated])
 def speed_compare(request):
+    """
+    مقایسه سرعت فروش محصول جدید و قدیمی:
+
+    سرعت فروش = تعداد فروش ÷ روزهای فعال
+    نسبت مقایسه = سرعت جدید ÷ سرعت قدیمی
+
+    خروجی:
+      - old_title, old_speed_per_day
+      - new_title, new_speed_per_day
+      - uplift_pct  (درصد تغییر: (new/old - 1) * 100)
+    """
     if not getattr(settings, "USE_FAKE_SELLER", False):
         return Response(
             {"detail": "Real Digikala insights are not implemented yet."},
@@ -598,34 +1191,47 @@ def speed_compare(request):
     products_index = _build_index_by_product_id(data.products)
     totals_qty, _, min_date, max_date = _sales_by_product(data.sales)
 
-    if not totals_qty:
-        return Response({"detail": "No sales data."}, status=status.HTTP_400_BAD_REQUEST)
+    # فقط محصولاتی که تاریخ شروع فروش دارند
+    candidates = [(pid, d) for pid, d in min_date.items() if pid in totals_qty]
+    if len(candidates) < 2:
+        return Response(
+            {"detail": "Not enough products with sales history to compare."},
+            status=status.HTTP_400_BAD_REQUEST,
+        )
 
-    # محصولی با فروش زیاد و محصولی با فروش کم را برای مقایسه انتخاب می‌کنیم
-    best_pid = max(totals_qty.items(), key=lambda x: x[1])[0]
-    worst_pid = min(totals_qty.items(), key=lambda x: x[1])[0]
+    # قدیمی‌ترین و جدیدترین بر اساس اولین فروش
+    candidates.sort(key=lambda x: x[1])
+    old_pid, _ = candidates[0]
+    new_pid, _ = candidates[-1]
 
-    def _build_speed(pid):
-        total_qty = totals_qty[pid]
-        if pid in min_date and pid in max_date:
-            days = max((max_date[pid] - min_date[pid]).days, 1)
-        else:
-            days = 30
-        daily = total_qty / days
-        weekly = daily * 7
-        return {
-            "product_id": pid,
-            "title": products_index.get(pid, {}).get("title"),
-            "daily_sales": round(daily, 2),
-            "weekly_sales": round(weekly, 2),
-            "total_units": total_qty,
-        }
+    def _speed(pid: str) -> float:
+        d_min = min_date.get(pid)
+        d_max = max_date.get(pid)
+        if not d_min or not d_max:
+            return 0.0
+        days = max((d_max - d_min).days, 1)
+        return totals_qty.get(pid, 0) / days
 
-    response = {
-        "fast": _build_speed(best_pid),
-        "slow": _build_speed(worst_pid),
+    old_speed = _speed(old_pid)
+    new_speed = _speed(new_pid)
+
+    if old_speed > 0:
+        uplift_pct = ((new_speed / old_speed) - 1.0) * 100.0
+    else:
+        uplift_pct = None
+
+    payload = {
+        "old_product_id": old_pid,
+        "old_title": products_index.get(old_pid, {}).get("title"),
+        "old_speed_per_day": round(old_speed, 2),
+        "new_product_id": new_pid,
+        "new_title": products_index.get(new_pid, {}).get("title"),
+        "new_speed_per_day": round(new_speed, 2),
+        "uplift_pct": round(uplift_pct, 1) if uplift_pct is not None else None,
     }
-    return Response(response)
+
+    return Response(payload)
+
 
 
 # ============================================================
@@ -701,4 +1307,36 @@ def comment_analysis(request):
         "sample_negative_comments": sample_negative,
     }
     return Response(response)
+
+
+
+from rest_framework.decorators import api_view, permission_classes
+from rest_framework.permissions import IsAuthenticated
+from rest_framework.response import Response
+from django.conf import settings
+
+# ...
+
+@api_view(["GET"])  # اگر الان ["POST"] است عوضش کن
+@permission_classes([IsAuthenticated])
+def products_list(request):
+    # حالت دیتای موجود (CSVها)
+    if not getattr(settings, "USE_FAKE_SELLER", False):
+        return Response(
+            {"detail": "Real Digikala products not implemented yet."},
+            status=501,
+        )
+
+    data = _load_existing_data()
+    items = [
+        {
+            "product_id": p.get("product_id"),
+            "title": p.get("title", ""),
+            "category": p.get("category"),
+            "brand": p.get("brand"),
+        }
+        for p in data.products
+        if p.get("product_id")
+    ]
+    return Response(items)
 

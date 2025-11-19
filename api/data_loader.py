@@ -6,6 +6,32 @@ from django.conf import settings
 BASE = Path(settings.BASE_DIR) / "Data"
 
 
+import csv
+from pathlib import Path
+
+BASE = Path(__file__).resolve().parents[2] / "Data"
+
+def read_csv(name):
+    path = BASE / name
+    with open(path, encoding="utf-8") as f:
+        return list(csv.DictReader(f))
+
+def load_fake_products():
+    return read_csv("products.csv")
+
+def load_fake_sales():
+    return read_csv("sales.csv")
+
+def load_fake_inventory():
+    return read_csv("inventory.csv")
+
+def load_fake_pricing():
+    return read_csv("pricing.csv")
+
+def load_fake_reviews():
+    return read_csv("reviews.csv")
+
+
 def _load_csv(filename: str):
     path = BASE / filename
     rows = []

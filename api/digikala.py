@@ -48,3 +48,13 @@ def get_profile_with_user_token(token: str) -> Dict[str, Any]:
     r.raise_for_status()
     return r.json()
 
+import requests
+
+def get_products_from_dk(token: str):
+    url = "https://seller.digikala.com/api/v1/products/"
+    headers = {"Authorization": f"Token {token}"}
+    r = requests.get(url, headers=headers, timeout=20)
+    if r.status_code != 200:
+        raise Exception(f"Digikala error: {r.text}")
+    return r.json()
+
