@@ -1,5 +1,6 @@
 # api/views_insights.py
 from __future__ import annotations
+from calendar import monthrange
 
 import csv
 import math
@@ -137,6 +138,7 @@ class ExistingData:
     inventory: List[Dict[str, Any]]
     pricing: List[Dict[str, Any]]
     reviews: List[Dict[str, Any]]
+    restocks: List[Dict[str, Any]]  
 
 
 def _load_existing_data() -> ExistingData:
@@ -145,24 +147,30 @@ def _load_existing_data() -> ExistingData:
     inventory = _read_csv("inventory.csv")
     pricing = _read_csv("pricing.csv")
     reviews = _read_csv("reviews.csv")
+    restocks = _read_csv("restocks.csv") 
 
     # نرمال‌سازی ساده‌ی انواع
+    for r in restocks:
+        r["typical_restock_delay_days"] = _safe_int(
+            r.get("typical_restock_delay_days")
+        )
+        r["supplier_lead_time_days"] = _safe_int(
+            r.get("supplier_lead_time_days")
+        )
     for p in products:
         p["cost_price"] = _safe_float(p.get("cost_price"))
         p["selling_price"] = _safe_float(p.get("selling_price"))
 
     for s in sales:
         s["quantity"] = _safe_int(s.get("quantity"))
-        s["unit_price"] = _safe_float(s.get("unit_price"))
+        s["unit_price"] = _safe_float(
+            s.get("unit_price") or s.get("final_price")
+        )
         s["discount_pct"] = _safe_float(s.get("discount_pct"))
-        # s["date"] = _parse_date(s.get("sale_date"))
         s["date"] = _parse_date(s.get("sale_date") or s.get("date"))
 
 
-    for inv in inventory:
-        inv["current_stock"] = _safe_int(inv.get("current_stock"))
-        inv["reorder_point"] = _safe_int(inv.get("reorder_point"))
-        inv["supplier_lead_time_days"] = _safe_int(inv.get("supplier_lead_time_days"))
+
 
     for pr in pricing:
         pr["your_price"] = _safe_float(pr.get("your_price"))
@@ -170,6 +178,36 @@ def _load_existing_data() -> ExistingData:
         pr["competitor_min_price"] = _safe_float(pr.get("competitor_min_price"))
         pr["competitor_max_price"] = _safe_float(pr.get("competitor_max_price"))
         pr["competitor_avg_price"] = _safe_float(pr.get("competitor_avg_price"))
+
+    # load inventory.csv
+    inventory_path = settings.BASE_DIR / "data" / "inventory.csv"
+    inventory = []
+    try:
+        with open(inventory_path, "r", encoding="utf-8") as f:
+            inventory = list(csv.DictReader(f))
+    except:
+        inventory = []
+
+    # normalize inventory
+    for inv in inventory:
+        inv["current_stock"] = _safe_int(inv.get("current_stock"))
+
+
+    # load restocks.csv
+    restocks_path = settings.BASE_DIR / "data" / "restocks.csv"
+    restocks = []
+    try:
+        with open(restocks_path, "r", encoding="utf-8") as f:
+            restocks = list(csv.DictReader(f))
+    except:
+        restocks = []
+
+    # normalize restocks
+    for r in restocks:
+        r["typical_restock_delay_days"] = _safe_float(r.get("typical_restock_delay_days"))
+        r["supplier_lead_time_days"] = _safe_float(r.get("supplier_lead_time_days"))
+
+
 
     for r in reviews:
         r["rating"] = _safe_int(r.get("rating"))
@@ -181,6 +219,7 @@ def _load_existing_data() -> ExistingData:
         inventory=inventory,
         pricing=pricing,
         reviews=reviews,
+        restocks=restocks, 
     )
 
 
@@ -192,9 +231,9 @@ def _get_seller_settings(user) -> SellerSettings:
         user=user,
         defaults={
             "extra_cost_pct": 3.0,
-            "slow_mover_min_weekly_sales": 3,
-            "slow_mover_min_profit_margin_pct": 10.0,
-            "supplier_lead_time_days": 12,
+            "slow_mover_min_speed": 3,
+            "slow_mover_min_margin": 10.0,
+            "lead_time_days": 12,
         },
     )
     return obj
@@ -309,173 +348,6 @@ def profit_margin(request):
 
 
 
-# from collections import defaultdict
-# from datetime import date
-
-# def _compute_slow_movers(
-#     products,
-#     sales,
-#     extra_cost_pct: float = 10.0,
-#     min_weekly_sales: int = 3,
-#     min_margin_pct: float = 10.0,
-#     min_days_active: int = 14,
-#     sku_filter: str | None = None,
-# ):
-#     """
-#     محاسبه محصولات کم‌تحرک (slow-mover):
-
-#     - فقط محصولاتی را نگه می‌داریم که سرعت فروش هفتگی‌شان کمتر از min_weekly_sales باشد.
-#     - اگر حاشیه سود هم از min_margin_pct کمتر باشد → پیشنهاد «حذف/خروج».
-#     - اگر حاشیه سود مناسب باشد ولی فروش کم باشد → پیشنهاد «تخفیف برای خروج موجودی».
-#     - محصولات بسیار تازه (کمتر از min_days_active روز) نادیده گرفته می‌شوند.
-#     - اگر sku_filter داده شود، فقط همان محصول بررسی می‌شود.
-#     """
-#     products_index = {p["product_id"]: p for p in products}
-
-#     totals_qty = defaultdict(int)
-#     first_date: dict[str, date] = {}
-#     last_date: dict[str, date] = {}
-
-#     # جمع‌کردن فروش‌ها بر اساس محصول
-#     for s in sales:
-#         pid = s["product_id"]
-
-#         if sku_filter and pid != sku_filter:
-#             continue
-
-#         d = s.get("date") or s.get("sale_date")
-#         if isinstance(d, str):
-#             d = date.fromisoformat(d)
-
-#         qty = int(s.get("quantity", 0) or 0)
-#         totals_qty[pid] += qty
-
-#         if pid not in first_date or d < first_date[pid]:
-#             first_date[pid] = d
-#         if pid not in last_date or d > last_date[pid]:
-#             last_date[pid] = d
-
-#     items = []
-
-#     for pid, product in products_index.items():
-#         if sku_filter and pid != sku_filter:
-#             continue
-
-#         total_qty = totals_qty.get(pid, 0)
-
-#         # اگر اصلاً فروشی ثبت نشده، بازه زمانی نداریم
-#         if pid in first_date and pid in last_date:
-#             days_active = max((last_date[pid] - first_date[pid]).days, 1)
-#         else:
-#             days_active = 1
-
-#         # نادیده گرفتن محصولات خیلی تازه
-#         if days_active < min_days_active:
-#             continue
-
-#         weeks_active = max(days_active / 7.0, 1.0)
-#         weekly_sales = total_qty / weeks_active
-
-#         # فقط کم‌تحرک‌ها
-#         if weekly_sales >= min_weekly_sales:
-#             continue
-
-#         # حاشیه سود (همان منطق عمومی)
-#         margin_info = _margin_for_product(
-#             product,
-#             extra_cost_pct=extra_cost_pct,
-#             commission_pct=19.0,  # فعلاً ثابت برای داده فیک
-#         )
-#         margin_pct = float(margin_info.get("margin_pct") or 0.0)
-
-#         # شاخص سودآوری بر اساس فرمول:
-#         # profitability_index = (میانگین فروش هفتگی × حاشیه سود واحد) ÷ میانگین موجودی
-#         selling_price = float(product.get("selling_price") or 0) or 1.0
-#         # حاشیه سود واحد به تومان
-#         profit_per_unit = (margin_pct / 100.0) * selling_price
-
-#         stock = float(product.get("stock", 0) or 0.0)
-#         avg_inventory = max(stock, 1.0)  # برای جلوگیری از تقسیم بر صفر
-
-#         profitability_index = (weekly_sales * profit_per_unit) / avg_inventory
-
-#         if margin_pct < min_margin_pct:
-#             action = "remove"
-#             reason = "سرعت فروش پایین و حاشیه سود ضعیف؛ پیشنهاد خروج یا جایگزینی محصول."
-#         else:
-#             action = "discount"
-#             reason = "سرعت فروش پایین ولی حاشیه سود قابل قبول؛ پیشنهاد تخفیف برای خروج موجودی."
-
-#         items.append(
-#             {
-#                 "product_id": pid,
-#                 "sku": pid,  # در دیتای فیک sku = product_id
-#                 "title": product.get("title"),
-#                 "category": product.get("category"),
-#                 "weekly_sales": round(weekly_sales, 2),
-#                 "total_sold": int(total_qty),
-#                 "margin_pct": round(margin_pct, 1),
-#                 "stock": stock,
-#                 "days_active": days_active,
-#                 "profit_per_unit": round(profit_per_unit, 2),
-#                 "profitability_index": round(profitability_index, 2),
-#                 "recommendation": action,
-#                 "reason": reason,
-#             }
-#         )
-
-#     # کندترین‌ها اول
-#     items_sorted = sorted(items, key=lambda x: x["weekly_sales"])
-
-#     return {
-#         "thresholds": {
-#             "min_weekly_sales": min_weekly_sales,
-#             "min_margin_pct": min_margin_pct,
-#             "min_days_active": min_days_active,
-#             "extra_cost_pct": extra_cost_pct,
-#         },
-#         "items": items_sorted[:20],
-#     }
-
-
-# @api_view(["GET"])
-# def slow_movers(request: Request):
-#     """
-#     محصولات کم‌تحرک:
-
-#     - محصولاتی که سرعت فروش هفتگی‌شان از حد آستانه کمتر است.
-#     - آستانه‌ها از SellerSettings خوانده می‌شود و در UI (تب Settings) قابل تنظیم است.
-#     - اگر کوئری‌پارامتر ?sku= داده شود، فقط همان محصول بررسی و برگردانده می‌شود.
-#     """
-#     if not settings.USE_FAKE_SELLER:
-#         # در آینده: همین متد را روی داده واقعی دیجی‌کالا صدا می‌زنیم.
-#         return Response(
-#             {"detail": "Not implemented for real Digikala data yet."},
-#             status=status.HTTP_501_NOT_IMPLEMENTED,
-#         )
-
-#     data = _load_existing_data()
-#     settings_obj = _get_seller_settings(request.user)
-
-#     # از تنظیمات کاربر بخوان
-#     extra_cost_pct = float(getattr(settings_obj, "extra_cost_pct", 0) or 0)
-#     min_weekly_sales = int(getattr(settings_obj, "slow_mover_min_speed", 3) or 3)
-#     min_margin_pct = float(getattr(settings_obj, "slow_mover_min_margin", 10.0) or 10.0)
-
-#     sku_filter = request.GET.get("sku") or None
-
-#     result = _compute_slow_movers(
-#         data.products,
-#         data.sales,
-#         extra_cost_pct=extra_cost_pct,
-#         min_weekly_sales=min_weekly_sales,
-#         min_margin_pct=min_margin_pct,
-#         min_days_active=14,  # اگر خواستی می‌تونیم این رو هم بعداً قابل تنظیم کنیم
-#         sku_filter=sku_filter,
-#     )
-
-#     return Response(result)
-
 from collections import defaultdict
 from datetime import date
 
@@ -568,10 +440,10 @@ def _compute_slow_movers(
 
         if margin_pct < min_margin_pct:
             action = "remove"
-            reason = "سرعت فروش پایین و حاشیه سود ضعیف؛ پیشنهاد خروج یا جایگزینی محصول."
+            reason = "Slow sales velocity and poor profit margins; suggest product withdrawal or replacement."
         else:
             action = "discount"
-            reason = "سرعت فروش پایین ولی حاشیه سود قابل قبول؛ پیشنهاد تخفیف برای خروج موجودی."
+            reason = "Slow sales pace but acceptable profit margin; offer discounts to clear inventory."
 
         items.append(
             {
@@ -652,6 +524,12 @@ def slow_movers(request: Request):
 @api_view(["GET"])
 @permission_classes([IsAuthenticated])
 def breakeven(request):
+    """
+    Breakeven for a single product (selected SKU).
+
+    - اگر ?sku= داده شود همان محصول را حساب می‌کند.
+    - اگر نه، پرفروش‌ترین محصول را به‌عنوان نمونه استفاده می‌کند.
+    """
     if not getattr(settings, "USE_FAKE_SELLER", False):
         return Response(
             {"detail": "Real Digikala insights are not implemented yet."},
@@ -659,41 +537,65 @@ def breakeven(request):
         )
 
     data = _load_existing_data()
+    if not data.products:
+        return Response(
+            {"detail": "No products data."},
+            status=status.HTTP_400_BAD_REQUEST,
+        )
+
     settings_obj = _get_seller_settings(request.user)
-    extra_cost_pct = float(settings_obj.extra_cost_pct or 0)
+    extra_cost_pct = float(getattr(settings_obj, "extra_cost_pct", 0) or 0)
+
+    sku = request.GET.get("sku") or None
 
     products_index = _build_index_by_product_id(data.products)
     totals_qty, _, _, _ = _sales_by_product(data.sales)
 
-    breakeven_items = []
-    for pid, product in products_index.items():
-        margin = _margin_for_product(product, extra_cost_pct)
-        price = margin["price"]
-        net_profit = margin["net_profit"]
-        fixed_costs = price * 50  # فرضی برای محاسبه‌ی تقریبی نقطه‌ی سر به سر
-        units_to_breakeven = math.ceil(fixed_costs / net_profit) if net_profit > 0 else None
+    # انتخاب product_id
+    if sku and sku in products_index:
+        pid = sku
+    elif totals_qty:
+        pid = max(totals_qty.items(), key=lambda x: x[1])[0]
+    else:
+        pid = data.products[0].get("product_id")
 
-        breakeven_items.append(
-            {
-                "product_id": pid,
-                "title": product.get("title"),
-                "current_sold_units": totals_qty.get(pid, 0),
-                "units_to_breakeven": units_to_breakeven,
-            }
+    product = products_index.get(pid)
+    if not product:
+        return Response(
+            {"detail": "Product not found for breakeven."},
+            status=status.HTTP_404_NOT_FOUND,
         )
 
-    breakeven_items = [x for x in breakeven_items if x["units_to_breakeven"] is not None]
-    breakeven_items.sort(key=lambda x: x["units_to_breakeven"])
+    margin = _margin_for_product(product, extra_cost_pct)
+    price = margin["price"]
+    net_profit = margin["net_profit"]
 
-    return Response(
-        {
-            "items": breakeven_items[:10],
-            "assumptions": {
-                "extra_cost_pct": extra_cost_pct,
-                "fixed_costs_per_sku_factor": 50,
-            },
-        }
+    # فرض ساده برای fixed cost؛ بعداً می‌توانی تنظیم‌پذیرش کنی
+    fixed_costs = price * 50 if price > 0 else 0.0
+    variable_cost = price - net_profit  # cost + other_costs + commission
+
+    breakeven_units = (
+        math.ceil(fixed_costs / net_profit) if net_profit > 0 else None
     )
+    current_sold_units = totals_qty.get(pid, 0)
+
+    if breakeven_units and breakeven_units > 0:
+        progress_pct = min(current_sold_units / breakeven_units * 100.0, 999.0)
+    else:
+        progress_pct = 0.0
+
+    payload = {
+        "product_id": pid,
+        "title": product.get("title"),
+        "price": round(price, 2),
+        "fixed_costs": round(fixed_costs, 2),
+        "variable_cost": round(variable_cost, 2),
+        "breakeven_units": int(breakeven_units or 0),
+        "current_sold_units": int(current_sold_units),
+        "progress_pct": round(progress_pct, 1),
+    }
+    return Response(payload)
+
 
 
 # ============================================================
@@ -753,60 +655,130 @@ def golden_times(request):
 @api_view(["GET"])
 @permission_classes([IsAuthenticated])
 def revenue_forecast(request):
+    """
+    Revenue forecast for a single product (selected SKU).
+
+    خروجی با UI هماهنگ است:
+      - current_month          (e.g. "2024-07")
+      - so_far_revenue         درآمد همین ماه تا امروز
+      - forecast_revenue       پیش‌بینی درآمد ماه بعد
+      - last_month_revenue     درآمد ماه قبل
+      - trend                  "increasing" / "decreasing" / "flat"
+      - confidence             عدد بین 0 و 1
+    """
     if not getattr(settings, "USE_FAKE_SELLER", False):
         return Response(
             {"detail": "Real Digikala insights are not implemented yet."},
             status=status.HTTP_501_NOT_IMPLEMENTED,
         )
 
-    data = _load_existing_data()
-    if not data.sales:
-        return Response({"detail": "No sales data."}, status=status.HTTP_400_BAD_REQUEST)
+    sku = request.GET.get("sku")
+    if not sku:
+        return Response(
+            {"detail": "sku query param is required."},
+            status=status.HTTP_400_BAD_REQUEST,
+        )
 
-    # جمع فروش روزانه
-    daily_revenue = defaultdict(float)
+    data = _load_existing_data()
+    # فقط فروش‌های همین محصول
+    sales_sku = [s for s in data.sales if s.get("product_id") == sku]
+
+    if not sales_sku:
+        return Response(
+            {"detail": "No sales data for given sku."},
+            status=status.HTTP_400_BAD_REQUEST,
+        )
+
+    # جمع درآمد روزانه
+    daily_rev = defaultdict(float)
     min_d, max_d = None, None
-    for s in data.sales:
+    for s in sales_sku:
         d = s.get("date")
         qty = _safe_int(s.get("quantity"))
         price = _safe_float(s.get("unit_price"))
         if not d:
             continue
-        daily_revenue[d] += qty * price
+        daily_rev[d] += qty * price
         if not min_d or d < min_d:
             min_d = d
         if not max_d or d > max_d:
             max_d = d
 
     if not min_d or not max_d:
-        return Response({"detail": "No valid dates in sales.csv"}, status=status.HTTP_400_BAD_REQUEST)
+        return Response(
+            {"detail": "No valid dates in sales for this sku."},
+            status=status.HTTP_400_BAD_REQUEST,
+        )
 
-    days = max((max_d - min_d).days + 1, 1)
-    total_revenue = sum(daily_revenue.values())
-    avg_daily = total_revenue / days
+    # ماه جاری را از روی آخرین تاریخ فروش فرض می‌کنیم
+    cur_year, cur_month = max_d.year, max_d.month
+    if cur_month == 1:
+        prev_year, prev_month = cur_year - 1, 12
+    else:
+        prev_year, prev_month = cur_year, cur_month - 1
 
-    # پیش‌بینی ساده‌ی ماه آینده
-    forecast_next_30 = avg_daily * 30.0
+    # درآمد ماه جاری
+    cur_month_rev = sum(
+        v
+        for d, v in daily_rev.items()
+        if d.year == cur_year and d.month == cur_month
+    )
+    # تعداد روزهایی که برای این ماه دیتا داریم
+    cur_days_with_data = len(
+        {d.day for d in daily_rev.keys() if d.year == cur_year and d.month == cur_month}
+    )
+    days_in_cur_month = monthrange(cur_year, cur_month)[1]
 
-    timeline = [
-        {"date": d.isoformat(), "revenue": round(v, 2)}
-        for d, v in sorted(daily_revenue.items())
-    ]
+    if cur_days_with_data > 0:
+        cur_daily_avg = cur_month_rev / cur_days_with_data
+    else:
+        cur_daily_avg = 0.0
 
-    return Response(
-        {
-            "total_revenue": round(total_revenue, 2),
-            "days": days,
-            "avg_daily_revenue": round(avg_daily, 2),
-            "forecast_next_30_days": round(forecast_next_30, 2),
-            "timeline": timeline,
-        }
+    # پیش‌بینی ساده: ماه بعد = میانگین روزانه فعلی × تعداد روز ماه بعد
+    if cur_month == 12:
+        next_year, next_month = cur_year + 1, 1
+    else:
+        next_year, next_month = cur_year, cur_month + 1
+    days_in_next_month = monthrange(next_year, next_month)[1]
+    forecast_next_month = cur_daily_avg * days_in_next_month
+
+    # درآمد ماه قبل
+    last_month_rev = sum(
+        v
+        for d, v in daily_rev.items()
+        if d.year == prev_year and d.month == prev_month
     )
 
+    # trend
+    eps = 0.05  # ۵٪ تلرانس
+    if last_month_rev <= 0 and forecast_next_month > 0:
+        trend = "increasing"
+    elif last_month_rev <= 0 and forecast_next_month <= 0:
+        trend = "flat"
+    else:
+        diff_ratio = (forecast_next_month - last_month_rev) / last_month_rev
+        if diff_ratio > eps:
+            trend = "increasing"
+        elif diff_ratio < -eps:
+            trend = "decreasing"
+        else:
+            trend = "flat"
 
-# ============================================================
-# 6) Discount vs competitors (pricing.csv)
-# ============================================================
+    # confidence: چه‌قدر از روزهای ماه جاری را پوشش داده‌ایم
+    confidence = 0.0
+    if days_in_cur_month > 0:
+        confidence = min(1.0, cur_days_with_data / days_in_cur_month)
+
+    payload = {
+        "product_id": sku,
+        "current_month": f"{cur_year}-{cur_month:02d}",
+        "so_far_revenue": round(cur_month_rev, 2),
+        "forecast_revenue": round(forecast_next_month, 2),  # ماه بعد
+        "last_month_revenue": round(last_month_rev, 2),
+        "trend": trend,
+        "confidence": round(confidence, 2),
+    }
+    return Response(payload)
 
 
 # ============================================================
@@ -817,27 +789,14 @@ def revenue_forecast(request):
 @permission_classes([IsAuthenticated])
 def discount_competition(request):
     """
-    تخفیف مؤثر نسبت به رقبا برای یک محصول (SKU انتخاب‌شده):
-
-    فرمول:
-      تخفیف مؤثر = (قیمت رقیب - قیمت نهایی شما) ÷ قیمت رقیب
-
-    خروجی با UI هماهنگ است:
-      - your_price
-      - your_discount_pct
-      - effective_price
-      - effective_discount_vs_cheapest_pct  (هرچه بزرگ‌تر، شما جذاب‌تر)
-      - position: "cheapest" / "in_line" / "more_expensive"
-      - competitors: [{name, price}]
+    Effective discount vs competitors for a selected SKU,
+    based on pricing.csv.
     """
     if not getattr(settings, "USE_FAKE_SELLER", False):
         return Response(
             {"detail": "Real Digikala insights are not implemented yet."},
             status=status.HTTP_501_NOT_IMPLEMENTED,
         )
-
-    data = _load_existing_data()
-    products_index = _build_index_by_product_id(data.products)
 
     sku = request.GET.get("sku")
     if not sku:
@@ -846,6 +805,9 @@ def discount_competition(request):
             status=status.HTTP_400_BAD_REQUEST,
         )
 
+    data = _load_existing_data()
+    products_index = _build_index_by_product_id(data.products)
+
     product = products_index.get(sku)
     if not product:
         return Response(
@@ -853,14 +815,24 @@ def discount_competition(request):
             status=status.HTTP_404_NOT_FOUND,
         )
 
-    your_price = float(product.get("selling_price") or 0)
-    your_discount_pct = float(product.get("discount_pct") or 0)
+    # match row in pricing.csv
+    pricing_row = next(
+        (pr for pr in data.pricing if str(pr.get("product_id")) == str(sku)),
+        None,
+    )
+
+    your_price = _safe_float(
+        pricing_row.get("your_price") if pricing_row else product.get("selling_price")
+    )
+    your_discount_pct = _safe_float(
+        pricing_row.get("your_discount_pct") if pricing_row else 0.0
+    )
     effective_price = your_price * (1 - your_discount_pct / 100.0)
 
-    # رقبا در دیتای فیک
-    comp_prices = [float(p) for p in product.get("competitor_prices", []) if p is not None]
-    if not comp_prices:
-        # اگر رقیب نداریم، فقط قیمت خودت را برگردان
+    comp_min = _safe_float(pricing_row.get("competitor_min_price")) if pricing_row else 0.0
+    comp_avg = _safe_float(pricing_row.get("competitor_avg_price")) if pricing_row else 0.0
+
+    if comp_min <= 0 and comp_avg <= 0:
         return Response(
             {
                 "your_price": round(your_price, 2),
@@ -872,31 +844,29 @@ def discount_competition(request):
             }
         )
 
-    comp_min = min(comp_prices)
-    comp_avg = sum(comp_prices) / len(comp_prices) if comp_prices else 0
-
     if comp_min > 0:
-        # فرمول: (قیمت رقیب - قیمت نهایی شما) / قیمت رقیب
         eff_discount_vs_cheapest_pct = ((comp_min - effective_price) / comp_min) * 100.0
     else:
         eff_discount_vs_cheapest_pct = None
 
-    # تعیین جایگاه
     if eff_discount_vs_cheapest_pct is None:
         position = "unknown"
     elif eff_discount_vs_cheapest_pct > 2:
-        # شما حداقل ~۲٪ ارزان‌تر از ارزان‌ترین رقیب هستی
         position = "cheapest"
     elif eff_discount_vs_cheapest_pct < -2:
-        # شما حداقل ~۲٪ گران‌تر از ارزان‌ترین رقیب هستی
         position = "more_expensive"
     else:
         position = "in_line"
 
-    competitors_payload = [
-        {"name": "min_competitor_price", "price": round(comp_min, 2)},
-        {"name": "avg_competitor_price", "price": round(comp_avg, 2)},
-    ]
+    competitors_payload = []
+    if comp_min > 0:
+        competitors_payload.append(
+            {"name": "min_competitor_price", "price": round(comp_min, 2)}
+        )
+    if comp_avg > 0:
+        competitors_payload.append(
+            {"name": "avg_competitor_price", "price": round(comp_avg, 2)}
+        )
 
     return Response(
         {
@@ -912,116 +882,6 @@ def discount_competition(request):
     )
 
 
-# @api_view(["GET"])
-# @permission_classes([IsAuthenticated])
-# def discount_competition(request):
-#     if not getattr(settings, "USE_FAKE_SELLER", False):
-#         return Response(
-#             {"detail": "Real Digikala insights are not implemented yet."},
-#             status=status.HTTP_501_NOT_IMPLEMENTED,
-#         )
-
-#     data = _load_existing_data()
-#     if not data.pricing:
-#         return Response({"detail": "No pricing data."}, status=status.HTTP_400_BAD_REQUEST)
-
-#     products_index = _build_index_by_product_id(data.products)
-
-#     items = []
-#     for pr in data.pricing:
-#         pid = pr.get("product_id")
-#         product = products_index.get(pid)
-#         if not product:
-#             continue
-
-#         your_price = _safe_float(pr.get("your_price"))
-#         your_discount_pct = _safe_float(pr.get("your_discount_pct"))
-#         effective_price = your_price * (1 - your_discount_pct / 100.0)
-
-#         comp_min = _safe_float(pr.get("competitor_min_price"))
-#         comp_avg = _safe_float(pr.get("competitor_avg_price"))
-#         if comp_min <= 0:
-#             position = "unknown"
-#             diff_vs_min_pct = None
-#         else:
-#             diff_vs_min_pct = (effective_price - comp_min) / comp_min * 100.0
-#             if diff_vs_min_pct < -2:
-#                 position = "cheapest"
-#             elif diff_vs_min_pct <= 2:
-#                 position = "in_line"
-#             else:
-#                 position = "more_expensive"
-
-#         items.append(
-#             {
-#                 "product_id": pid,
-#                 "title": product.get("title"),
-#                 "your_price": round(your_price, 2),
-#                 "your_discount_pct": your_discount_pct,
-#                 "effective_price": round(effective_price, 2),
-#                 "competitor_min_price": comp_min,
-#                 "competitor_avg_price": comp_avg,
-#                 "diff_vs_min_pct": round(diff_vs_min_pct, 2) if diff_vs_min_pct is not None else None,
-#                 "position": position,
-#             }
-#         )
-
-#     # محصولاتی که خیلی گران‌تر از حداقل رقیب هستند در اول لیست
-#     items.sort(key=lambda x: (x["diff_vs_min_pct"] if x["diff_vs_min_pct"] is not None else -999), reverse=True)
-
-#     return Response({"items": items[:20]})
-
-
-# ============================================================
-# 7) Restock time (inventory + sales)
-# ============================================================
-
-
-# @api_view(["GET"])
-# @permission_classes([IsAuthenticated])
-# def restock_time(request):
-#     if not getattr(settings, "USE_FAKE_SELLER", False):
-#         return Response(
-#             {"detail": "Real Digikala insights are not implemented yet."},
-#             status=status.HTTP_501_NOT_IMPLEMENTED,
-#         )
-
-#     data = _load_existing_data()
-#     products_index = _build_index_by_product_id(data.products)
-#     inv_index = {inv["product_id"]: inv for inv in data.inventory if inv.get("product_id")}
-
-#     totals_qty, _, min_date, max_date = _sales_by_product(data.sales)
-
-#     items = []
-#     for pid, inv in inv_index.items():
-#         current_stock = _safe_int(inv.get("current_stock"))
-#         if pid in min_date and pid in max_date:
-#             days = max((max_date[pid] - min_date[pid]).days, 1)
-#         else:
-#             days = 30  # فرضی
-#         daily_sales = totals_qty.get(pid, 0) / days if days > 0 else 0.0
-#         days_to_stockout = current_stock / daily_sales if daily_sales > 0 else None
-
-#         reorder_point = _safe_int(inv.get("reorder_point"))
-#         supplier_lead = _safe_int(inv.get("supplier_lead_time_days"))
-
-#         items.append(
-#             {
-#                 "product_id": pid,
-#                 "title": products_index.get(pid, {}).get("title"),
-#                 "current_stock": current_stock,
-#                 "daily_sales": round(daily_sales, 2),
-#                 "days_to_stockout": round(days_to_stockout, 1) if days_to_stockout is not None else None,
-#                 "reorder_point": reorder_point,
-#                 "supplier_lead_time_days": supplier_lead,
-#             }
-#         )
-
-#     # محصولاتی که زودتر تمام می‌شوند بالاتر باشند
-#     items_with_eta = [x for x in items if x["days_to_stockout"] is not None]
-#     items_with_eta.sort(key=lambda x: x["days_to_stockout"])
-
-#     return Response({"items": items_with_eta[:20]})
 
 # ============================================================
 # 7) Restock time (inventory + sales)
@@ -1030,214 +890,182 @@ def discount_competition(request):
 @api_view(["GET"])
 @permission_classes([IsAuthenticated])
 def restock_time(request):
-    """
-    پیش‌بینی زمان تأمین موجودی و نیاز به سفارش:
-
-    - daily_sales_avg: میانگین فروش روزانه
-    - days_to_stockout: چند روز دیگر موجودی تمام می‌شود
-    - supplier_lead_time_days: مدت‌زمان تأمین از تأمین‌کننده
-    - should_order: آیا باید همین حالا سفارش بدهم؟
-      (اگر زمان تمام شدن موجودی <= مدت تأمین)
-    - recommended_order_qty: پیشنهاد مقدار سفارش، بر اساس
-      هدف پوشش (lead time + 7 روز بافر)
-    """
     if not getattr(settings, "USE_FAKE_SELLER", False):
         return Response(
-            {"detail": "Real Digikala insights are not implemented yet."},
-            status=status.HTTP_501_NOT_IMPLEMENTED,
+            {"detail": "Real Digikala insights not implemented"},
+            status=501,
         )
-
-    data = _load_existing_data()
-    products_index = _build_index_by_product_id(data.products)
-    inv_index = {
-        inv["product_id"]: inv
-        for inv in data.inventory
-        if inv.get("product_id")
-    }
-
-    totals_qty, _, min_date, max_date = _sales_by_product(data.sales)
 
     sku = request.GET.get("sku")
     if not sku:
-        return Response(
-            {"detail": "sku query param is required."},
-            status=status.HTTP_400_BAD_REQUEST,
-        )
+        return Response({"detail": "sku is required"}, status=400)
 
-    inv = inv_index.get(sku)
+    data = _load_existing_data()
+    products_index = _build_index_by_product_id(data.products)
+
     product = products_index.get(sku)
-    if not inv or not product:
-        return Response(
-            {"detail": "Inventory or product not found for given sku."},
-            status=status.HTTP_404_NOT_FOUND,
-        )
+    if not product:
+        return Response({"detail": "product not found"}, status=404)
 
-    current_stock = _safe_int(inv.get("current_stock"))
+    # 1) read inventory
+    inv_row = next((i for i in data.inventory if i["product_id"] == sku), None)
+    current_stock = inv_row["current_stock"] if inv_row else 0
 
-    if sku in min_date and sku in max_date:
-        days = max((max_date[sku] - min_date[sku]).days, 1)
+    # 2) read restock stats
+    r_row = next((r for r in data.restocks if r["product_id"] == sku), None)
+    typical_delay = r_row["typical_restock_delay_days"] if r_row else 0
+    lead_time = r_row["supplier_lead_time_days"] if r_row else 0
+
+    # 3) calculate daily sales avg from last 30 days
+    sales_sku = [s for s in data.sales if s["product_id"] == sku]
+    if sales_sku:
+        daily = defaultdict(float)
+        for s in sales_sku:
+            if s["date"]:
+                daily[s["date"]] += s["quantity"]
+        daily_sales_avg = sum(daily.values()) / max(len(daily), 1)
     else:
-        # اگر داده فروش نداریم، فرض کن ۳۰ روز
-        days = 30
+        daily_sales_avg = 0
 
-    total_sold = totals_qty.get(sku, 0)
-    daily_sales_avg = total_sold / days if days > 0 else 0.0
-
-    days_to_stockout = current_stock / daily_sales_avg if daily_sales_avg > 0 else None
-
-    supplier_lead = _safe_int(inv.get("supplier_lead_time_days"))
-    reorder_point = _safe_int(inv.get("reorder_point"))
-
-    # هدف پوشش موجودی: lead time + 7 روز بافر
-    target_cover_days = supplier_lead + 7 if supplier_lead > 0 else 14
-    target_stock = daily_sales_avg * target_cover_days
-    recommended_order_qty = max(int(round(target_stock - current_stock)), 0)
-
-    # شرط تصمیم سفارش:
-    # - اگر زمان تمام شدن موجودی وجود دارد و <= lead time
-    #   یا موجودی فعلی <= reorder_point
-    if days_to_stockout is not None and supplier_lead > 0:
-        should_order = days_to_stockout <= supplier_lead or current_stock <= reorder_point
+    # 4) calculate stockout time
+    if daily_sales_avg > 0:
+        days_to_stockout = current_stock / daily_sales_avg
     else:
-        should_order = current_stock <= reorder_point
+        days_to_stockout = 999999  # practically infinite
+
+    # 5) calculate order recommendation
+    risk_level = "normal"
+    should_order = False
+    recommended_order_qty = 0
+
+    if days_to_stockout <= typical_delay:
+        risk_level = "high"
+        should_order = True
+        recommended_order_qty = int(daily_sales_avg * (typical_delay + 2))
+
+    elif days_to_stockout > 60:
+        risk_level = "overstock"
 
     payload = {
         "product_id": sku,
         "title": product.get("title"),
-        "current_stock": current_stock,
         "daily_sales_avg": round(daily_sales_avg, 2),
-        "days_to_stockout": round(days_to_stockout, 1) if days_to_stockout is not None else None,
-        "reorder_point": reorder_point,
-        "supplier_lead_time_days": supplier_lead,
+        "current_stock": current_stock,
+        "days_to_stockout": round(days_to_stockout, 1),
+        "typical_restock_delay_days": typical_delay,
+        "supplier_lead_time_days": lead_time,
+        "risk_level": risk_level,
         "should_order": should_order,
         "recommended_order_qty": recommended_order_qty,
+        "recommendation_text": (
+            "Stockout risk detected — ordering is recommended."
+            if should_order else
+            "Stock level is stable."
+        )
     }
 
     return Response(payload)
+
 
 
 # ============================================================
 # 8) Speed compare (خیلی ساده؛ دو محصول قدیمی/جدید بر اساس فروش)
 # ============================================================
 
-
-# @api_view(["GET"])
-# @permission_classes([IsAuthenticated])
-# def speed_compare(request):
-#     if not getattr(settings, "USE_FAKE_SELLER", False):
-#         return Response(
-#             {"detail": "Real Digikala insights are not implemented yet."},
-#             status=status.HTTP_501_NOT_IMPLEMENTED,
-#         )
-
-#     data = _load_existing_data()
-#     products_index = _build_index_by_product_id(data.products)
-#     totals_qty, _, min_date, max_date = _sales_by_product(data.sales)
-
-#     if not totals_qty:
-#         return Response({"detail": "No sales data."}, status=status.HTTP_400_BAD_REQUEST)
-
-#     # محصولی با فروش زیاد و محصولی با فروش کم را برای مقایسه انتخاب می‌کنیم
-#     best_pid = max(totals_qty.items(), key=lambda x: x[1])[0]
-#     worst_pid = min(totals_qty.items(), key=lambda x: x[1])[0]
-
-#     def _build_speed(pid):
-#         total_qty = totals_qty[pid]
-#         if pid in min_date and pid in max_date:
-#             days = max((max_date[pid] - min_date[pid]).days, 1)
-#         else:
-#             days = 30
-#         daily = total_qty / days
-#         weekly = daily * 7
-#         return {
-#             "product_id": pid,
-#             "title": products_index.get(pid, {}).get("title"),
-#             "daily_sales": round(daily, 2),
-#             "weekly_sales": round(weekly, 2),
-#             "total_units": total_qty,
-#         }
-
-#     response = {
-#         "fast": _build_speed(best_pid),
-#         "slow": _build_speed(worst_pid),
-#     }
-#     return Response(response)
-
-# ============================================================
-# 8) Speed compare (مقایسه سرعت فروش محصول جدید و قدیمی)
-# ============================================================
-
 @api_view(["GET"])
 @permission_classes([IsAuthenticated])
-def speed_compare(request):
-    """
-    مقایسه سرعت فروش محصول جدید و قدیمی:
-
-    سرعت فروش = تعداد فروش ÷ روزهای فعال
-    نسبت مقایسه = سرعت جدید ÷ سرعت قدیمی
-
-    خروجی:
-      - old_title, old_speed_per_day
-      - new_title, new_speed_per_day
-      - uplift_pct  (درصد تغییر: (new/old - 1) * 100)
-    """
+def speed_comparison(request):
     if not getattr(settings, "USE_FAKE_SELLER", False):
-        return Response(
-            {"detail": "Real Digikala insights are not implemented yet."},
-            status=status.HTTP_501_NOT_IMPLEMENTED,
-        )
+        return Response({"detail": "Not implemented"}, status=501)
+
+    sku = request.GET.get("sku")
+    if not sku:
+        return Response({"detail": "sku is required"}, status=400)
 
     data = _load_existing_data()
     products_index = _build_index_by_product_id(data.products)
-    totals_qty, _, min_date, max_date = _sales_by_product(data.sales)
 
-    # فقط محصولاتی که تاریخ شروع فروش دارند
-    candidates = [(pid, d) for pid, d in min_date.items() if pid in totals_qty]
-    if len(candidates) < 2:
-        return Response(
-            {"detail": "Not enough products with sales history to compare."},
-            status=status.HTTP_400_BAD_REQUEST,
-        )
+    product = products_index.get(sku)
+    if not product:
+        return Response({"detail": "product not found"}, status=404)
 
-    # قدیمی‌ترین و جدیدترین بر اساس اولین فروش
-    candidates.sort(key=lambda x: x[1])
-    old_pid, _ = candidates[0]
-    new_pid, _ = candidates[-1]
-
-    def _speed(pid: str) -> float:
-        d_min = min_date.get(pid)
-        d_max = max_date.get(pid)
-        if not d_min or not d_max:
-            return 0.0
-        days = max((d_max - d_min).days, 1)
-        return totals_qty.get(pid, 0) / days
-
-    old_speed = _speed(old_pid)
-    new_speed = _speed(new_pid)
-
-    if old_speed > 0:
-        uplift_pct = ((new_speed / old_speed) - 1.0) * 100.0
+    # --- 1) compute sales speed of selected product ---
+    sales_sku = [s for s in data.sales if s["product_id"] == sku]
+    if sales_sku:
+        daily = defaultdict(float)
+        for s in sales_sku:
+            if s["date"]:
+                daily[s["date"]] += s["quantity"]
+        new_speed = sum(daily.values()) / max(len(daily), 1)
     else:
-        uplift_pct = None
+        new_speed = 0
 
-    payload = {
-        "old_product_id": old_pid,
-        "old_title": products_index.get(old_pid, {}).get("title"),
-        "old_speed_per_day": round(old_speed, 2),
-        "new_product_id": new_pid,
-        "new_title": products_index.get(new_pid, {}).get("title"),
-        "new_speed_per_day": round(new_speed, 2),
-        "uplift_pct": round(uplift_pct, 1) if uplift_pct is not None else None,
-    }
+    # --- 2) find replacement product (if exists) ---
+    replacements = _read_csv("replacements.csv") if os.path.exists(settings.BASE_DIR / "data" / "replacements.csv") else []
+    old_product_id = None
+    for r in replacements:
+        if r["new_product_id"] == sku:
+            old_product_id = r["old_product_id"]
 
-    return Response(payload)
+    # if no explicit replacement → compare against category average
+    if old_product_id:
+        old_sales = [s for s in data.sales if s["product_id"] == old_product_id]
+        if old_sales:
+            daily_old = defaultdict(float)
+            for s in old_sales:
+                if s["date"]:
+                    daily_old[s["date"]] += s["quantity"]
+            old_speed = sum(daily_old.values()) / max(len(daily_old), 1)
+        else:
+            old_speed = 0
+        old_title = products_index[old_product_id]["title"]
+    else:
+        # fallback to category average
+        category = product.get("category")
+        cat_products = [p for p in data.products if p.get("category") == category]
+
+        speeds = []
+        for p in cat_products:
+            sales_p = [s for s in data.sales if s["product_id"] == p["product_id"]]
+            if not sales_p:
+                continue
+            daily_p = defaultdict(float)
+            for s in sales_p:
+                if s["date"]:
+                    daily_p[s["date"]] += s["quantity"]
+            speed = sum(daily_p.values()) / max(len(daily_p), 1)
+            speeds.append(speed)
+
+        old_speed = sum(speeds) / max(len(speeds), 1) if speeds else 0
+        old_title = f"Category average ({category})"
+
+    # --- 3) compare speeds ---
+    if old_speed == 0:
+        change_pct = 0
+    else:
+        change_pct = ((new_speed - old_speed) / old_speed) * 100
+
+    # --- 4) conclusion ---
+    if change_pct > 5:
+        conclusion = "New product performs better."
+    elif change_pct < -5:
+        conclusion = "New product performs worse."
+    else:
+        conclusion = "No meaningful change."
+
+    return Response({
+        "old_product_title": old_title,
+        "old_speed": round(old_speed, 2),
+        "new_product_title": product["title"],
+        "new_speed": round(new_speed, 2),
+        "speed_change_pct": round(change_pct, 2),
+        "conclusion": conclusion,
+    })
 
 
-
-# ============================================================
-# 9) Comment analysis (reviews.csv)
-# ============================================================
-
+# # ============================================================
+# # 9) Comment analysis (reviews.csv)
+# # ============================================================
 
 @api_view(["GET"])
 @permission_classes([IsAuthenticated])
@@ -1261,9 +1089,10 @@ def comment_analysis(request):
         sum(_safe_int(r.get("rating")) for r in data.reviews) / total if total > 0 else 0.0
     )
 
-    # مهم‌ترین ایرادها و نقاط قوت از روی tag_main
+    from collections import defaultdict
     issue_counts = defaultdict(int)
     like_counts = defaultdict(int)
+
     for r in data.reviews:
         tag = r.get("tag_main") or ""
         sentiment = str(r.get("sentiment")).lower()
@@ -1283,33 +1112,45 @@ def comment_analysis(request):
         reverse=True,
     )[:5]
 
-    sample_negative = [
-        {
-            "product_id": r.get("product_id"),
-            "rating": _safe_int(r.get("rating")),
-            "comment": r.get("comment"),
-            "tag_main": r.get("tag_main"),
-        }
+    sample_comments = [
+        r.get("comment")
         for r in data.reviews
-        if str(r.get("sentiment")).lower() == "negative"
+        if r.get("comment")
     ][:5]
 
+    # درصدها و اسکور احساسات
+    if total > 0:
+        positive_pct = round(pos / total * 100.0, 1)
+        negative_pct = round(neg / total * 100.0, 1)
+        sentiment_score = round((pos - neg) / total, 2)  # -1 تا +1 تقریبی
+    else:
+        positive_pct = negative_pct = sentiment_score = 0.0
+
+    # یک خلاصه‌ی انگلیسی ساده
+    if total == 0:
+        summary_text = "No customer feedback yet."
+    elif sentiment_score > 0.3:
+        summary_text = "Customer satisfaction is good."
+    elif sentiment_score < -0.3:
+        summary_text = "Customer satisfaction is declining."
+    else:
+        summary_text = "Customer satisfaction is mixed."
+
     response = {
-        "summary": {
-            "total_reviews": total,
-            "avg_rating": round(avg_rating, 2),
-            "positive": pos,
-            "negative": neg,
-            "neutral": neu,
-        },
+        "positive_pct": positive_pct,
+        "negative_pct": negative_pct,
+        "sentiment_score": sentiment_score,
+        "avg_rating": round(avg_rating, 2),
+        "total_reviews": total,
+        "summary_text": summary_text,
         "top_issues": top_issues,
         "top_likes": top_likes,
-        "sample_negative_comments": sample_negative,
+        "sample_comments": sample_comments,
     }
     return Response(response)
 
 
-
+import os
 from rest_framework.decorators import api_view, permission_classes
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
@@ -1339,4 +1180,3 @@ def products_list(request):
         if p.get("product_id")
     ]
     return Response(items)
-

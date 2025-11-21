@@ -38,39 +38,74 @@ export default function App() {
   }
 
   // بعد از لاگین
-  return (
-    <AppLayout
-      activeTab={activeTab}
-      onChangeTab={setActiveTab}
-      onLogout={handleLogout}
-    >
-      {activeTab === "profile" && (
-        <div className="space-y-6">
-          <SellerProfile />
-        </div>
-      )}
+  // return (
+  //   <AppLayout
+  //     activeTab={activeTab}
+  //     onChangeTab={setActiveTab}
+  //     onLogout={handleLogout}
+  //   >
+  //     {activeTab === "profile" && (
+  //       <div className="space-y-6">
+  //         <SellerProfile />
+  //       </div>
+  //     )}
 
-      {activeTab === "insights" && (
-        <div className="space-y-6">
-          <SellerProfile />
-          <InsightsDashboard />
-        </div>
-      )}
+  //     {activeTab === "insights" && (
+  //       <div className="space-y-6">
+  //         <SellerProfile />
+  //         <InsightsDashboard />
+  //       </div>
+  //     )}
 
-      {activeTab === "classic" && (
-        <div className="space-y-6">
-          <SellerProfile />
-          <Dashboard />
-        </div>
-      )}
+  //     {activeTab === "classic" && (
+  //       <div className="space-y-6">
+  //         <SellerProfile />
+  //         <Dashboard />
+  //       </div>
+  //     )}
 
-      {activeTab === "settings" && (
-        <div className="space-y-6">
-          <Settings />
-        </div>
-      )}
+  //     {activeTab === "settings" && (
+  //       <div className="space-y-6">
+  //         <Settings />
+  //       </div>
+  //     )}
 
-    </AppLayout>
-  );
-}
+  //   </AppLayout>
+  // );
+
+
+    // بعد از لاگین
+    return (
+      <AppLayout
+        activeTab={activeTab}
+        onChangeTab={setActiveTab}
+        onLogout={handleLogout}
+      >
+        {activeTab === "profile" && (
+          <div className="space-y-6">
+            <SellerProfile />
+          </div>
+        )}
+  
+        {activeTab === "insights" && (
+          <div className="space-y-6">
+            <InsightsDashboard />
+          </div>
+        )}
+  
+        {activeTab === "classic" && (
+          <div className="space-y-6">
+            <Dashboard />
+          </div>
+        )}
+  
+        {activeTab === "settings" && (
+          <div className="space-y-6">
+            <Settings />
+          </div>
+        )}
+      </AppLayout>
+    );
+  }
+  
 

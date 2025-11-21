@@ -184,44 +184,62 @@ export default function InsightsDashboard() {
 
       {/* کارت‌های اینسایت */}
       <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
-        {/* 1. حاشیه سود */}
-        <MetricCard title="حاشیه سود واقعی پس از کمیسیون">
-          <StatRow label="SKU / ID" value={profit.sku ?? "-"} />
-          <StatRow label="نام محصول" value={profit.title ?? "-"} />
+
+        {/* 1. Real profit margin */}
+        <MetricCard title="Real profit margin after commission">
           <StatRow
-            label="قیمت فروش"
-            value={`${fmt(profit.price)} تومان`}
+            label="Product"
+            value={
+              selectedProduct
+                ? `${selectedProduct.title} (ID: ${selectedProduct.product_id})`
+                : profit.title ?? "-"
+            }
           />
           <StatRow
-            label="کمیسیون"
+            label="Category"
+            value={selectedProduct?.category ?? profit.category ?? "-"}
+          />
+          <StatRow
+            label="Brand"
+            value={selectedProduct?.brand ?? profit.brand ?? "-"}
+          />
+          <StatRow
+            label="Selling price"
+            value={`${fmt(profit.price)} Toman`}
+          />
+          <StatRow
+            label="Commission"
             value={`${profit.commission_pct ?? 0}%`}
           />
           <StatRow
-            label="قیمت خرید"
-            value={`${fmt(profit.buy_price)} تومان`}
+            label="Buy price"
+            value={`${fmt(profit.buy_price)} Toman`}
           />
           <StatRow
-            label="سایر هزینه‌ها"
-            value={`${fmt(profit.other_costs)} تومان`}
+            label="Other costs"
+            value={`${fmt(profit.other_costs)} Toman`}
           />
           <StatRow
-            label="سود خالص"
-            value={`${fmt(profit.net_profit)} تومان`}
+            label="Net profit"
+            value={`${fmt(profit.net_profit)} Toman`}
           />
           <StatRow
-            label="حاشیه سود"
+            label="Profit margin"
             value={`${profit.margin_pct ?? 0}%`}
           />
         </MetricCard>
 
-        {/* 2. محصولات کم‌تحرک */}
-        <MetricCard title="محصولات کم‌تحرک و پیشنهاد خروج">
+
+        {/* 2. Slow-moving products + exit recommendation */}
+        <MetricCard title="Slow-moving products & exit recommendation">
           {(slow.items ?? []).map((it) => (
             <div
               key={it.sku ?? it.product_id}
               className="mb-3 border-b border-gray-700 pb-2 last:border-0 last:pb-0"
             >
-              <div className="font-medium">{it.title}</div>
+              <div className="font-medium mb-1">
+                {it.title ?? "Unnamed product"}
+              </div>
 
               <StatRow
                 label="SKU"
@@ -229,75 +247,83 @@ export default function InsightsDashboard() {
               />
 
               <StatRow
-                label="حاشیه سود"
-                // از margin_pct که بک‌اند می‌فرستد
+                label="Profit margin"
                 value={`${it.margin_pct ?? 0}%`}
               />
 
               <StatRow
-                label="سرعت فروش/هفته"
-                // از weekly_sales که بک‌اند می‌فرستد
+                label="Weekly sales"
                 value={it.weekly_sales ?? 0}
               />
 
               <StatRow
-                label="شاخص سودآوری"
-                // فرمول: (میانگین فروش هفتگی × حاشیه سود واحد) ÷ میانگین موجودی
+                label="Profitability index"
                 value={it.profitability_index ?? 0}
               />
 
               <StatRow
-                label="موجودی"
+                label="Stock"
                 value={it.stock ?? 0}
               />
 
               <StatRow
-                label="پیشنهاد"
+                label="Recommendation"
                 value={
                   it.recommendation === "remove"
-                    ? "خروج از سبد"
+                    ? "Remove from catalog"
                     : it.recommendation === "discount"
-                    ? "تخفیف/پروموشن"
+                    ? "Discount/Promotion suggested"
                     : it.recommendation ?? "-"
                 }
               />
 
               <div className="text-xs text-gray-400 mt-1">
-                {it.reason ?? ""}
+                {it.reason
+                  ? it.reason
+                  : "Low sales speed and weak profit margin detected."}
               </div>
             </div>
           ))}
         </MetricCard>
 
 
-        {/* 3. نقطه سر به سر */}
-        <MetricCard title="نقطه سر به سر محصول">
-          <StatRow label="نام محصول" value={breakeven?.title ?? "-"} />
+
+        {/* 3. Breakeven point for selected product */}
+        <MetricCard title="Breakeven point for this product">
           <StatRow
-            label="هزینه ثابت"
-            value={`${fmt(breakeven?.fixed_costs)} تومان`}
+            label="Product"
+            value={
+              breakeven?.title ??
+              selectedProduct?.title ??
+              "-"
+            }
           />
           <StatRow
-            label="هزینه متغیر/واحد"
-            value={`${fmt(breakeven?.variable_cost)} تومان`}
+            label="Selling price"
+            value={`${fmt(breakeven?.price)} Toman`}
           />
           <StatRow
-            label="قیمت فروش"
-            value={`${fmt(breakeven?.price)} تومان`}
+            label="Fixed costs (allocated)"
+            value={`${fmt(breakeven?.fixed_costs)} Toman`}
           />
           <StatRow
-            label="تعداد سر به سر"
+            label="Variable cost / unit"
+            value={`${fmt(breakeven?.variable_cost)} Toman`}
+          />
+          <StatRow
+            label="Units to breakeven"
             value={breakeven?.breakeven_units ?? 0}
           />
           <StatRow
-            label="فروش فعلی ماه"
-            value={breakeven?.current_month_sales ?? 0}
+            label="Units sold (period)"
+            value={breakeven?.current_sold_units ?? 0}
           />
           <StatRow
-            label="پیشرفت به سمت سر به سر"
+            label="Progress towards breakeven"
             value={`${breakeven?.progress_pct ?? 0}%`}
           />
         </MetricCard>
+
 
         {/* 5. زمان‌های طلایی فروش */}
         <MetricCard title="زمان‌های طلایی فروش">
@@ -322,179 +348,263 @@ export default function InsightsDashboard() {
           </div>
         </MetricCard>
 
-        {/* 6. پیش‌بینی درآمد ماه */}
-        <MetricCard title="پیش‌بینی درآمد ماه">
-          <StatRow label="ماه جاری" value={revenue?.current_month ?? "-"} />
+
+                {/* 6. Revenue forecast for this product */}
+                <MetricCard title="Revenue forecast (per product)">
           <StatRow
-            label="درآمد تا الان"
-            value={`${fmt(revenue?.so_far_revenue)} تومان`}
+            label="Current month"
+            value={revenue?.current_month ?? "-"}
           />
           <StatRow
-            label="پیش‌بینی پایان ماه"
-            value={`${fmt(revenue?.forecast_revenue)} تومان`}
+            label="Revenue so far (this month)"
+            value={`${fmt(revenue?.so_far_revenue)} Toman`}
           />
           <StatRow
-            label="درآمد ماه قبل"
-            value={`${fmt(revenue?.last_month_revenue)} تومان`}
+            label="Next month forecast"
+            value={`${fmt(revenue?.forecast_revenue)} Toman`}
           />
           <StatRow
-            label="روند"
+            label="Last month revenue"
+            value={`${fmt(revenue?.last_month_revenue)} Toman`}
+          />
+          <StatRow
+            label="Trend"
             value={
               revenue?.trend === "increasing"
-                ? "صعودی"
+                ? "Increasing"
                 : revenue?.trend === "decreasing"
-                ? "نزولی"
-                : "ثابت"
+                ? "Decreasing"
+                : "Flat"
             }
           />
           <StatRow
-            label="اعتماد مدل"
+            label="Model confidence"
             value={`${Math.round((revenue?.confidence ?? 0) * 100)}%`}
           />
         </MetricCard>
 
-        {/* 10. تخفیف مؤثر نسبت به رقبا */}
-        <MetricCard title="تخفیف مؤثر نسبت به رقبا">
-          <StatRow
-            label="قیمت شما"
-            value={`${fmt(discount?.your_price)} تومان`}
-          />
-          <StatRow
-            label="تخفیف شما"
-            value={`${discount?.your_discount_pct ?? 0}%`}
-          />
-          <StatRow
-            label="قیمت مؤثر"
-            value={`${fmt(discount?.effective_price)} تومان`}
-          />
-          <div className="mt-2 text-xs text-gray-400">
-            رقبا:
-            <ul className="list-disc list-inside mt-1">
-              {(discount?.competitors || []).map((c: AnyObj) => (
-                <li key={c.name}>
-                  {c.name}: {fmt(c.price)} تومان
-                </li>
-              ))}
-            </ul>
-          </div>
-          <StatRow
-            label="مزیت vs ارزان‌ترین"
-            value={`${discount?.effective_discount_vs_cheapest_pct ?? 0}%`}
-          />
-          <StatRow
-            label="جایگاه"
-            value={
-              discount?.position === "cheapest"
-                ? "ارزان‌ترین"
-                : discount?.position ?? "-"
-            }
-          />
-        </MetricCard>
+        {/* 10. Discount vs competitors */}
+<MetricCard title="Effective discount vs competitors">
+  <StatRow
+    label="Your price"
+    value={`${fmt(discount?.your_price)} Toman`}
+  />
+  <StatRow
+    label="Your discount"
+    value={`${discount?.your_discount_pct ?? 0}%`}
+  />
+  <StatRow
+    label="Effective price"
+    value={`${fmt(discount?.effective_price)} Toman`}
+  />
 
-        {/* 14. زمان تأمین موجودی */}
-        <MetricCard title="پیش‌بینی زمان تأمین موجودی">
-          <StatRow label="نام محصول" value={restock?.title ?? "-"} />
+  <div className="mt-2 text-xs text-gray-400">
+    Competitors:
+    <ul className="list-disc list-inside mt-1">
+      {(discount?.competitors || []).map((c: AnyObj) => (
+        <li key={c.name}>
+          {c.name}: {fmt(c.price)} Toman
+        </li>
+      ))}
+      {(!discount?.competitors || discount.competitors.length === 0) && (
+        <li>No competitor data</li>
+      )}
+    </ul>
+  </div>
+
+  <StatRow
+    label="Advantage vs cheapest"
+    value={
+      discount?.effective_discount_vs_cheapest_pct != null
+        ? `${discount.effective_discount_vs_cheapest_pct.toFixed(2)}%`
+        : "-"
+    }
+  />
+  <StatRow
+    label="Position"
+    value={
+      discount?.position === "cheapest"
+        ? "Cheapest"
+        : discount?.position === "in_line"
+        ? "In line"
+        : discount?.position === "more_expensive"
+        ? "More expensive"
+        : discount?.position === "no_competitor"
+        ? "No competitors"
+        : "-"
+    }
+  />
+</MetricCard>
+
+
+
+        {/* 14. Restock timing recommendation */}
+        <MetricCard title="Restock timing recommendation">
           <StatRow
-            label="میانگین فروش روزانه"
+            label="Product"
+            value={restock?.title ?? selectedProduct?.title ?? "-"}
+          />
+          <StatRow
+            label="Daily sales average"
             value={restock?.daily_sales_avg ?? 0}
           />
           <StatRow
-            label="موجودی فعلی"
-            value={restock?.current_stock ?? 0}
+            label="Current stock"
+            value={restock?.current_stock ?? restock?.current_stock ?? 0}
           />
           <StatRow
-            label="زمان تأمین از تأمین‌کننده"
-            value={`${restock?.supplier_lead_time_days ?? 0} روز`}
+            label="Projected days to stockout"
+            value={restock?.days_to_stockout ?? 0}
           />
           <StatRow
-            label="زمان تا اتمام موجودی"
-            value={`${restock?.days_to_stockout ?? 0} روز`}
-          />
-          <StatRow
-            label="نیاز به سفارش"
-            value={restock?.should_order ? "بله" : "خیر"}
-          />
-          <StatRow
-            label="مقدار سفارش پیشنهادی"
-            value={restock?.recommended_order_qty ?? 0}
-          />
-        </MetricCard>
-
-        {/* 17. مقایسه سرعت فروش جدید/قدیم */}
-        <MetricCard title="مقایسه سرعت فروش محصول جدید و قدیمی">
-          <StatRow label="محصول قدیمی" value={speed?.old_title ?? "-"} />
-          <StatRow
-            label="سرعت فروش قدیمی (واحد/روز)"
-            value={speed?.old_speed_per_day ?? 0}
-          />
-          <StatRow label="محصول جدید" value={speed?.new_title ?? "-"} />
-          <StatRow
-            label="سرعت فروش جدید (واحد/روز)"
-            value={speed?.new_speed_per_day ?? 0}
-          />
-          <StatRow
-            label="تغییر سرعت"
-            value={`${speed?.uplift_pct ?? 0}%`}
-          />
-          <StatRow
-            label="نتیجه"
+            label="Typical restock delay after stockout"
             value={
-              speed?.conclusion === "new_faster"
-                ? "نسخه جدید سریع‌تر است"
-                : speed?.conclusion ?? "-"
+              restock?.typical_restock_delay_days != null
+                ? `${restock.typical_restock_delay_days} days`
+                : "-"
             }
           />
+          <StatRow
+            label="Supplier lead time"
+            value={
+              restock?.supplier_lead_time_days != null
+                ? `${restock.supplier_lead_time_days} days`
+                : "-"
+            }
+          />
+          <StatRow
+            label="Risk level"
+            value={restock?.risk_level ?? "-"}
+          />
+          <StatRow
+            label="Recommended order quantity"
+            value={restock?.recommended_order_qty ?? 0}
+          />
+          <div className="mt-2 text-xs text-gray-400">
+            Recommendation:
+            <div className="mt-1">
+              {restock?.recommendation_text ??
+                "No specific risk detected based on current sales and stock history."}
+            </div>
+          </div>
         </MetricCard>
 
+
+        <MetricCard title="Sales speed comparison (old vs new)">
+          <StatRow label="Old product" value={speed?.old_product_title ?? "-"} />
+          <StatRow
+            label="Old sales speed (units/day)"
+            value={speed?.old_speed != null ? speed.old_speed.toFixed(2) : "-"}
+          />
+
+          <StatRow label="New product" value={speed?.new_product_title ?? "-"} />
+          <StatRow
+            label="New sales speed (units/day)"
+            value={speed?.new_speed != null ? speed.new_speed.toFixed(2) : "-"}
+          />
+
+          <StatRow
+            label="Speed change"
+            value={
+              speed?.speed_change_pct != null
+                ? `${speed.speed_change_pct.toFixed(1)}%`
+                : "-"
+            }
+          />
+
+          <StatRow
+            label="Conclusion"
+            value={speed?.conclusion ?? "-"}
+          />
+</MetricCard>
+
+
         {/* 11. تحلیل کامنت‌ها */}
-        <MetricCard title="تحلیل تجربه مشتری از کامنت‌ها">
-          <StatRow
-            label="نظرات مثبت"
-            value={`${comments?.positive_pct ?? 0}%`}
-          />
-          <StatRow
-            label="نظرات منفی"
-            value={`${comments?.negative_pct ?? 0}%`}
-          />
-          <StatRow
-            label="امتیاز احساسات"
-            value={comments?.sentiment_score ?? 0}
-          />
-          <div className="mt-2 text-xs text-gray-400">
-            مشکلات پرتکرار:
-            <ul className="list-disc list-inside mt-1">
-              {(comments?.top_issues || []).map(
-                (i: AnyObj, idx: number) => (
-                  <li key={idx}>
-                    {i.tag} ({i.count}) — {i.example}
-                  </li>
-                )
-              )}
-            </ul>
-          </div>
-          <div className="mt-2 text-xs text-gray-400">
-            نکات مثبت:
-            <ul className="list-disc list-inside mt-1">
-              {(comments?.top_likes || []).map(
-                (i: AnyObj, idx: number) => (
-                  <li key={idx}>
-                    {i.tag} ({i.count}) — {i.example}
-                  </li>
-                )
-              )}
-            </ul>
-          </div>
-          <div className="mt-2 text-xs text-gray-400">
-            نمونه نظرات:
-            <ul className="list-disc list-inside mt-1">
-              {(comments?.sample_comments || []).map(
-                (c: string, idx: number) => (
-                  <li key={idx}>{c}</li>
-                )
-              )}
-            </ul>
-          </div>
-        </MetricCard>
+
+
+{/* 11. Comment analysis */}
+<MetricCard title="Customer experience from comments">
+  <StatRow
+    label="Positive reviews"
+    value={
+      comments && typeof comments.positive_pct === "number"
+        ? `${comments.positive_pct.toFixed(1)}%`
+        : "-"
+    }
+  />
+  <StatRow
+    label="Negative reviews"
+    value={
+      comments && typeof comments.negative_pct === "number"
+        ? `${comments.negative_pct.toFixed(1)}%`
+        : "-"
+    }
+  />
+  <StatRow
+    label="Sentiment score"
+    value={
+      comments && typeof comments.sentiment_score === "number"
+        ? comments.sentiment_score.toFixed(2)
+        : "-"
+    }
+  />
+  <StatRow
+    label="Average rating"
+    value={
+      comments && typeof comments.avg_rating === "number"
+        ? comments.avg_rating.toFixed(2)
+        : "-"
+    }
+  />
+  <StatRow
+    label="Total reviews"
+    value={comments?.total_reviews ?? 0}
+  />
+
+  <div className="mt-2 text-xs text-gray-400">
+    Summary:
+    <div className="mt-1">
+      {comments?.summary_text ?? "No summary available yet."}
+    </div>
+  </div>
+
+  <div className="mt-2 text-xs text-gray-400">
+    Frequent issues:
+    <ul className="list-disc list-inside mt-1">
+      {(comments?.top_issues || []).map((i: AnyObj, idx: number) => (
+        <li key={idx}>
+          {i.tag} ({i.count})
+        </li>
+      ))}
+    </ul>
+  </div>
+
+  <div className="mt-2 text-xs text-gray-400">
+    Positive highlights:
+    <ul className="list-disc list-inside mt-1">
+      {(comments?.top_likes || []).map((i: AnyObj, idx: number) => (
+        <li key={idx}>
+          {i.tag} ({i.count})
+        </li>
+      ))}
+    </ul>
+  </div>
+
+  <div className="mt-2 text-xs text-gray-400">
+    Example comments:
+    <ul className="list-disc list-inside mt-1">
+      {(comments?.sample_comments || []).map(
+        (c: string, idx: number) => (
+          <li key={idx}>{c}</li>
+        )
+      )}
+    </ul>
+  </div>
+</MetricCard>
+
+
+
+
       </div>
     </div>
   );

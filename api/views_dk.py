@@ -24,7 +24,7 @@ def _build_demo_profile():
         "seller_code": "EDA-DEMO-SELLER",
         "shop_title": "فروشگاه آزمایشی EDA",
         "shop_url": "https://seller.digikala.com/",
-        "city": "تهران",
+        "city": "Tehran",
         "profile_type": "demo",
         "metrics": {
             "total_products": 120,

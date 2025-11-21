@@ -1,0 +1,13 @@
+product_id,typical_restock_delay_days,supplier_lead_time_days
+P001,5,7
+P002,10,12
+P003,2,3
+P004,7,10
+P005,6,8
+P006,9,11
+P007,4,6
+P008,8,9
+P009,3,5
+P010,12,14
+P011,7,9
+P012,5,7

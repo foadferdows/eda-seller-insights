@@ -13,7 +13,7 @@ from .views_insights import (
     revenue_forecast,
     discount_competition,
     restock_time,
-    speed_compare,
+    speed_comparison,
     comment_analysis,
 )
 from .views_settings import seller_settings
@@ -43,7 +43,7 @@ urlpatterns = [
     path("insights/revenue-forecast/", revenue_forecast, name="insights_revenue_forecast"),
     path("insights/discount-competition/", discount_competition, name="insights_discount_competition"),
     path("insights/restock-time/", restock_time, name="insights_restock_time"),
-    path("insights/speed-compare/", speed_compare, name="insights_speed_compare"),
+    path("insights/speed-compare/", speed_comparison, name="insights_speed_compare"),
     path("insights/comment-analysis/", comment_analysis, name="insights_comment_analysis"),
 
 ]

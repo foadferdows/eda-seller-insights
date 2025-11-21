@@ -2,19 +2,19 @@
 ├── api
 │   ├── __init__.py
 │   ├── __pycache__
-│   │   ├── __init__.cpython-313.pyc
-│   │   ├── admin.cpython-313.pyc
-│   │   ├── apps.cpython-313.pyc
-│   │   ├── data_loader.cpython-313.pyc
-│   │   ├── digikala.cpython-313.pyc
-│   │   ├── models.cpython-313.pyc
-│   │   ├── serializers_settings.cpython-313.pyc
-│   │   ├── urls.cpython-313.pyc
-│   │   ├── views_auth_seller.cpython-313.pyc
-│   │   ├── views_dk.cpython-313.pyc
-│   │   ├── views_insights.cpython-313.pyc
-│   │   ├── views_settings.cpython-313.pyc
-│   │   └── views.cpython-313.pyc
+│   │   ├── __init__.cpython-312.pyc
+│   │   ├── admin.cpython-312.pyc
+│   │   ├── apps.cpython-312.pyc
+│   │   ├── data_loader.cpython-312.pyc
+│   │   ├── digikala.cpython-312.pyc
+│   │   ├── models.cpython-312.pyc
+│   │   ├── serializers_settings.cpython-312.pyc
+│   │   ├── urls.cpython-312.pyc
+│   │   ├── views_auth_seller.cpython-312.pyc
+│   │   ├── views_dk.cpython-312.pyc
+│   │   ├── views_insights.cpython-312.pyc
+│   │   ├── views_settings.cpython-312.pyc
+│   │   └── views.cpython-312.pyc
 │   ├── admin.py
 │   ├── apps.py
 │   ├── data_loader.py
@@ -22,9 +22,9 @@
 │   ├── migrations
 │   │   ├── __init__.py
 │   │   ├── __pycache__
-│   │   │   ├── __init__.cpython-313.pyc
-│   │   │   ├── 0001_initial.cpython-313.pyc
-│   │   │   └── 0002_sellersettings.cpython-313.pyc
+│   │   │   ├── __init__.cpython-312.pyc
+│   │   │   ├── 0001_initial.cpython-312.pyc
+│   │   │   └── 0002_sellersettings.cpython-312.pyc
 │   │   ├── 0001_initial.py
 │   │   └── 0002_sellersettings.py
 │   ├── models.py
@@ -40,10 +40,10 @@
 ├── backend
 │   ├── __init__.py
 │   ├── __pycache__
-│   │   ├── __init__.cpython-313.pyc
-│   │   ├── settings.cpython-313.pyc
-│   │   ├── urls.cpython-313.pyc
-│   │   └── wsgi.cpython-313.pyc
+│   │   ├── __init__.cpython-312.pyc
+│   │   ├── settings.cpython-312.pyc
+│   │   ├── urls.cpython-312.pyc
+│   │   └── wsgi.cpython-312.pyc
 │   ├── asgi.py
 │   ├── settings.py
 │   ├── urls.py
@@ -86,6 +86,13 @@
 ├── manage.py
 ├── metadata.json
 ├── node_modules
+│   ├── @alloc
+│   │   └── quick-lru
+│   │       ├── index.d.ts
+│   │       ├── index.js
+│   │       ├── license
+│   │       ├── package.json
+│   │       └── readme.md
 │   ├── @babel
 │   │   ├── code-frame
 │   │   │   ├── lib
@@ -1517,6 +1524,39 @@
 │   │       ├── LICENSE
 │   │       ├── package.json
 │   │       └── README.md
+│   ├── @tailwindcss
+│   │   ├── node
+│   │   │   ├── dist
+│   │   │   │   ├── esm-cache.loader.d.mts
+│   │   │   │   ├── esm-cache.loader.mjs
+│   │   │   │   ├── index.d.mts
+│   │   │   │   ├── index.d.ts
+│   │   │   │   ├── index.js
+│   │   │   │   ├── index.mjs
+│   │   │   │   ├── require-cache.d.ts
+│   │   │   │   └── require-cache.js
+│   │   │   ├── LICENSE
+│   │   │   ├── package.json
+│   │   │   └── README.md
+│   │   ├── oxide
+│   │   │   ├── index.d.ts
+│   │   │   ├── index.js
+│   │   │   ├── LICENSE
+│   │   │   └── package.json
+│   │   ├── oxide-darwin-arm64
+│   │   │   ├── LICENSE
+│   │   │   ├── package.json
+│   │   │   ├── README.md
+│   │   │   └── tailwindcss-oxide.darwin-arm64.node
+│   │   └── postcss
+│   │       ├── dist
+│   │       │   ├── index.d.mts
+│   │       │   ├── index.d.ts
+│   │       │   ├── index.js
+│   │       │   └── index.mjs
+│   │       ├── LICENSE
+│   │       ├── package.json
+│   │       └── README.md
 │   ├── @types
 │   │   ├── babel__core
 │   │   │   ├── index.d.ts
@@ -1717,6 +1757,94 @@
 │   │   ├── license
 │   │   ├── package.json
 │   │   └── readme.md
+│   ├── autoprefixer
+│   │   ├── bin
+│   │   │   └── autoprefixer
+│   │   ├── data
+│   │   │   └── prefixes.js
+│   │   ├── lib
+│   │   │   ├── at-rule.js
+│   │   │   ├── autoprefixer.d.ts
+│   │   │   ├── autoprefixer.js
+│   │   │   ├── brackets.js
+│   │   │   ├── browsers.js
+│   │   │   ├── declaration.js
+│   │   │   ├── hacks
+│   │   │   │   ├── align-content.js
+│   │   │   │   ├── align-items.js
+│   │   │   │   ├── align-self.js
+│   │   │   │   ├── animation.js
+│   │   │   │   ├── appearance.js
+│   │   │   │   ├── autofill.js
+│   │   │   │   ├── backdrop-filter.js
+│   │   │   │   ├── background-clip.js
+│   │   │   │   ├── background-size.js
+│   │   │   │   ├── block-logical.js
+│   │   │   │   ├── border-image.js
+│   │   │   │   ├── border-radius.js
+│   │   │   │   ├── break-props.js
+│   │   │   │   ├── cross-fade.js
+│   │   │   │   ├── display-flex.js
+│   │   │   │   ├── display-grid.js
+│   │   │   │   ├── file-selector-button.js
+│   │   │   │   ├── filter-value.js
+│   │   │   │   ├── filter.js
+│   │   │   │   ├── flex-basis.js
+│   │   │   │   ├── flex-direction.js
+│   │   │   │   ├── flex-flow.js
+│   │   │   │   ├── flex-grow.js
+│   │   │   │   ├── flex-shrink.js
+│   │   │   │   ├── flex-spec.js
+│   │   │   │   ├── flex-wrap.js
+│   │   │   │   ├── flex.js
+│   │   │   │   ├── fullscreen.js
+│   │   │   │   ├── gradient.js
+│   │   │   │   ├── grid-area.js
+│   │   │   │   ├── grid-column-align.js
+│   │   │   │   ├── grid-end.js
+│   │   │   │   ├── grid-row-align.js
+│   │   │   │   ├── grid-row-column.js
+│   │   │   │   ├── grid-rows-columns.js
+│   │   │   │   ├── grid-start.js
+│   │   │   │   ├── grid-template-areas.js
+│   │   │   │   ├── grid-template.js
+│   │   │   │   ├── grid-utils.js
+│   │   │   │   ├── image-rendering.js
+│   │   │   │   ├── image-set.js
+│   │   │   │   ├── inline-logical.js
+│   │   │   │   ├── intrinsic.js
+│   │   │   │   ├── justify-content.js
+│   │   │   │   ├── mask-border.js
+│   │   │   │   ├── mask-composite.js
+│   │   │   │   ├── order.js
+│   │   │   │   ├── overscroll-behavior.js
+│   │   │   │   ├── pixelated.js
+│   │   │   │   ├── place-self.js
+│   │   │   │   ├── placeholder-shown.js
+│   │   │   │   ├── placeholder.js
+│   │   │   │   ├── print-color-adjust.js
+│   │   │   │   ├── text-decoration-skip-ink.js
+│   │   │   │   ├── text-decoration.js
+│   │   │   │   ├── text-emphasis-position.js
+│   │   │   │   ├── transform-decl.js
+│   │   │   │   ├── user-select.js
+│   │   │   │   └── writing-mode.js
+│   │   │   ├── info.js
+│   │   │   ├── old-selector.js
+│   │   │   ├── old-value.js
+│   │   │   ├── prefixer.js
+│   │   │   ├── prefixes.js
+│   │   │   ├── processor.js
+│   │   │   ├── resolution.js
+│   │   │   ├── selector.js
+│   │   │   ├── supports.js
+│   │   │   ├── transition.js
+│   │   │   ├── utils.js
+│   │   │   ├── value.js
+│   │   │   └── vendor.js
+│   │   ├── LICENSE
+│   │   ├── package.json
+│   │   └── README.md
 │   ├── balanced-match
 │   │   ├── index.js
 │   │   ├── LICENSE.md
@@ -3106,6 +3234,16 @@
 │   │   ├── LICENCE.md
 │   │   ├── package.json
 │   │   └── README.md
+│   ├── detect-libc
+│   │   ├── index.d.ts
+│   │   ├── lib
+│   │   │   ├── detect-libc.js
+│   │   │   ├── elf.js
+│   │   │   ├── filesystem.js
+│   │   │   └── process.js
+│   │   ├── LICENSE
+│   │   ├── package.json
+│   │   └── README.md
 │   ├── eastasianwidth
 │   │   ├── eastasianwidth.js
 │   │   ├── package.json
@@ -3149,6 +3287,58 @@
 │   │   ├── RGI_Emoji.js
 │   │   ├── text.d.ts
 │   │   └── text.js
+│   ├── enhanced-resolve
+│   │   ├── lib
+│   │   │   ├── AliasFieldPlugin.js
+│   │   │   ├── AliasPlugin.js
+│   │   │   ├── AppendPlugin.js
+│   │   │   ├── CachedInputFileSystem.js
+│   │   │   ├── CloneBasenamePlugin.js
+│   │   │   ├── ConditionalPlugin.js
+│   │   │   ├── createInnerContext.js
+│   │   │   ├── DescriptionFilePlugin.js
+│   │   │   ├── DescriptionFileUtils.js
+│   │   │   ├── DirectoryExistsPlugin.js
+│   │   │   ├── ExportsFieldPlugin.js
+│   │   │   ├── ExtensionAliasPlugin.js
+│   │   │   ├── FileExistsPlugin.js
+│   │   │   ├── forEachBail.js
+│   │   │   ├── getInnerRequest.js
+│   │   │   ├── getPaths.js
+│   │   │   ├── ImportsFieldPlugin.js
+│   │   │   ├── index.js
+│   │   │   ├── JoinRequestPartPlugin.js
+│   │   │   ├── JoinRequestPlugin.js
+│   │   │   ├── LogInfoPlugin.js
+│   │   │   ├── MainFieldPlugin.js
+│   │   │   ├── ModulesInHierachicDirectoriesPlugin.js
+│   │   │   ├── ModulesInHierarchicalDirectoriesPlugin.js
+│   │   │   ├── ModulesInRootPlugin.js
+│   │   │   ├── NextPlugin.js
+│   │   │   ├── ParsePlugin.js
+│   │   │   ├── PnpPlugin.js
+│   │   │   ├── Resolver.js
+│   │   │   ├── ResolverFactory.js
+│   │   │   ├── RestrictionsPlugin.js
+│   │   │   ├── ResultPlugin.js
+│   │   │   ├── RootsPlugin.js
+│   │   │   ├── SelfReferencePlugin.js
+│   │   │   ├── SymlinkPlugin.js
+│   │   │   ├── SyncAsyncFileSystemDecorator.js
+│   │   │   ├── TryNextPlugin.js
+│   │   │   ├── UnsafeCachePlugin.js
+│   │   │   ├── UseFilePlugin.js
+│   │   │   └── util
+│   │   │       ├── entrypoints.js
+│   │   │       ├── identifier.js
+│   │   │       ├── memoize.js
+│   │   │       ├── module-browser.js
+│   │   │       ├── path.js
+│   │   │       └── process-browser.js
+│   │   ├── LICENSE
+│   │   ├── package.json
+│   │   ├── README.md
+│   │   └── types.d.ts
 │   ├── es-toolkit
 │   │   ├── array.d.ts
 │   │   ├── array.js
@@ -5920,6 +6110,32 @@
 │   │   ├── LICENSE
 │   │   ├── package.json
 │   │   └── README.md
+│   ├── fraction.js
+│   │   ├── CHANGELOG.md
+│   │   ├── dist
+│   │   │   ├── fraction.js
+│   │   │   ├── fraction.min.js
+│   │   │   └── fraction.mjs
+│   │   ├── examples
+│   │   │   ├── angles.js
+│   │   │   ├── approx.js
+│   │   │   ├── egyptian.js
+│   │   │   ├── hesse-convergence.js
+│   │   │   ├── integrate.js
+│   │   │   ├── ratio-chain.js
+│   │   │   ├── rational-pow.js
+│   │   │   ├── tape-measure.js
+│   │   │   ├── toFraction.js
+│   │   │   └── valueOfPi.js
+│   │   ├── fraction.d.mts
+│   │   ├── fraction.d.ts
+│   │   ├── LICENSE
+│   │   ├── package.json
+│   │   ├── README.md
+│   │   ├── src
+│   │   │   └── fraction.js
+│   │   └── tests
+│   │       └── fraction.test.js
 │   ├── fsevents
 │   │   ├── fsevents.d.ts
 │   │   ├── fsevents.js
@@ -6208,6 +6424,14 @@
 │   │   ├── LICENSE
 │   │   ├── package.json
 │   │   └── README.md
+│   ├── graceful-fs
+│   │   ├── clone.js
+│   │   ├── graceful-fs.js
+│   │   ├── legacy-streams.js
+│   │   ├── LICENSE
+│   │   ├── package.json
+│   │   ├── polyfills.js
+│   │   └── README.md
 │   ├── gtoken
 │   │   ├── build
 │   │   │   ├── cjs
@@ -6324,6 +6548,24 @@
 │   │   ├── LICENSE.md
 │   │   ├── package.json
 │   │   └── README.md
+│   ├── jiti
+│   │   ├── dist
+│   │   │   ├── babel.cjs
+│   │   │   └── jiti.cjs
+│   │   ├── lib
+│   │   │   ├── jiti-cli.mjs
+│   │   │   ├── jiti-hooks.mjs
+│   │   │   ├── jiti-native.mjs
+│   │   │   ├── jiti-register.d.mts
+│   │   │   ├── jiti-register.mjs
+│   │   │   ├── jiti.cjs
+│   │   │   ├── jiti.d.cts
+│   │   │   ├── jiti.d.mts
+│   │   │   ├── jiti.mjs
+│   │   │   └── types.d.ts
+│   │   ├── LICENSE
+│   │   ├── package.json
+│   │   └── README.md
 │   ├── js-tokens
 │   │   ├── CHANGELOG.md
 │   │   ├── index.js
@@ -6387,8 +6629,42 @@
 │   │   ├── LICENSE
 │   │   ├── package.json
 │   │   └── readme.md
+│   ├── lightningcss
+│   │   ├── LICENSE
+│   │   ├── node
+│   │   │   ├── ast.d.ts
+│   │   │   ├── ast.js.flow
+│   │   │   ├── browserslistToTargets.js
+│   │   │   ├── composeVisitors.js
+│   │   │   ├── flags.js
+│   │   │   ├── index.d.ts
+│   │   │   ├── index.js
+│   │   │   ├── index.js.flow
+│   │   │   ├── index.mjs
+│   │   │   ├── targets.d.ts
+│   │   │   └── targets.js.flow
+│   │   ├── package.json
+│   │   └── README.md
+│   ├── lightningcss-darwin-arm64
+│   │   ├── LICENSE
+│   │   ├── lightningcss.darwin-arm64.node
+│   │   ├── package.json
+│   │   └── README.md
 │   ├── lru-cache
 │   │   ├── index.js
+│   │   ├── LICENSE
+│   │   ├── package.json
+│   │   └── README.md
+│   ├── magic-string
+│   │   ├── dist
+│   │   │   ├── magic-string.cjs.d.ts
+│   │   │   ├── magic-string.cjs.js
+│   │   │   ├── magic-string.cjs.js.map
+│   │   │   ├── magic-string.es.d.mts
+│   │   │   ├── magic-string.es.mjs
+│   │   │   ├── magic-string.es.mjs.map
+│   │   │   ├── magic-string.umd.js
+│   │   │   └── magic-string.umd.js.map
 │   │   ├── LICENSE
 │   │   ├── package.json
 │   │   └── README.md
@@ -6537,6 +6813,11 @@
 │   │   ├── LICENSE
 │   │   ├── package.json
 │   │   └── README.md
+│   ├── normalize-range
+│   │   ├── index.js
+│   │   ├── license
+│   │   ├── package.json
+│   │   └── readme.md
 │   ├── package-json-from-dist
 │   │   ├── dist
 │   │   │   ├── commonjs
@@ -6673,6 +6954,17 @@
 │   │   │   ├── warn-once.js
 │   │   │   ├── warning.d.ts
 │   │   │   └── warning.js
+│   │   ├── LICENSE
+│   │   ├── package.json
+│   │   └── README.md
+│   ├── postcss-value-parser
+│   │   ├── lib
+│   │   │   ├── index.d.ts
+│   │   │   ├── index.js
+│   │   │   ├── parse.js
+│   │   │   ├── stringify.js
+│   │   │   ├── unit.js
+│   │   │   └── walk.js
 │   │   ├── LICENSE
 │   │   ├── package.json
 │   │   └── README.md
@@ -8008,6 +8300,64 @@
 │   │   │       └── readme.md
 │   │   ├── package.json
 │   │   └── readme.md
+│   ├── tailwindcss
+│   │   ├── dist
+│   │   │   ├── chunk-GFBUASX3.mjs
+│   │   │   ├── chunk-HTB5LLOP.mjs
+│   │   │   ├── chunk-MEY3PWYT.mjs
+│   │   │   ├── colors-b_6i0Oi7.d.ts
+│   │   │   ├── colors.d.mts
+│   │   │   ├── colors.d.ts
+│   │   │   ├── colors.js
+│   │   │   ├── colors.mjs
+│   │   │   ├── default-theme.d.mts
+│   │   │   ├── default-theme.d.ts
+│   │   │   ├── default-theme.js
+│   │   │   ├── default-theme.mjs
+│   │   │   ├── flatten-color-palette.d.mts
+│   │   │   ├── flatten-color-palette.d.ts
+│   │   │   ├── flatten-color-palette.js
+│   │   │   ├── flatten-color-palette.mjs
+│   │   │   ├── lib.d.mts
+│   │   │   ├── lib.d.ts
+│   │   │   ├── lib.js
+│   │   │   ├── lib.mjs
+│   │   │   ├── plugin.d.mts
+│   │   │   ├── plugin.d.ts
+│   │   │   ├── plugin.js
+│   │   │   ├── plugin.mjs
+│   │   │   ├── resolve-config-BIFUA2FY.d.ts
+│   │   │   ├── resolve-config-QUZ9b-Gn.d.mts
+│   │   │   └── types-WlZgYgM8.d.mts
+│   │   ├── index.css
+│   │   ├── LICENSE
+│   │   ├── package.json
+│   │   ├── preflight.css
+│   │   ├── README.md
+│   │   ├── theme.css
+│   │   └── utilities.css
+│   ├── tapable
+│   │   ├── lib
+│   │   │   ├── AsyncParallelBailHook.js
+│   │   │   ├── AsyncParallelHook.js
+│   │   │   ├── AsyncSeriesBailHook.js
+│   │   │   ├── AsyncSeriesHook.js
+│   │   │   ├── AsyncSeriesLoopHook.js
+│   │   │   ├── AsyncSeriesWaterfallHook.js
+│   │   │   ├── Hook.js
+│   │   │   ├── HookCodeFactory.js
+│   │   │   ├── HookMap.js
+│   │   │   ├── index.js
+│   │   │   ├── MultiHook.js
+│   │   │   ├── SyncBailHook.js
+│   │   │   ├── SyncHook.js
+│   │   │   ├── SyncLoopHook.js
+│   │   │   ├── SyncWaterfallHook.js
+│   │   │   └── util-browser.js
+│   │   ├── LICENSE
+│   │   ├── package.json
+│   │   ├── README.md
+│   │   └── tapable.d.ts
 │   ├── tiny-invariant
 │   │   ├── dist
 │   │   │   ├── esm
@@ -8790,4 +9140,4 @@
 ├── types.ts
 └── vite.config.ts
 
-689 directories, 8102 files
+729 directories, 8412 files
