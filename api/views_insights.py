@@ -1067,87 +1067,110 @@ def speed_comparison(request):
 # # 9) Comment analysis (reviews.csv)
 # # ============================================================
 
+# 9) Comment analysis
 @api_view(["GET"])
-@permission_classes([IsAuthenticated])
 def comment_analysis(request):
-    if not getattr(settings, "USE_FAKE_SELLER", False):
-        return Response(
-            {"detail": "Real Digikala insights are not implemented yet."},
-            status=status.HTTP_501_NOT_IMPLEMENTED,
-        )
+    sku = request.query_params.get("sku")
+    if not sku:
+        return Response({"detail": "sku is required"}, status=status.HTTP_400_BAD_REQUEST)
 
     data = _load_existing_data()
-    if not data.reviews:
-        return Response({"detail": "No reviews data."}, status=status.HTTP_400_BAD_REQUEST)
+    reviews = [r for r in data.reviews if r.get("product_id") == sku]
+    review_count = len(reviews)
 
-    total = len(data.reviews)
-    pos = sum(1 for r in data.reviews if str(r.get("sentiment")).lower() == "positive")
-    neg = sum(1 for r in data.reviews if str(r.get("sentiment")).lower() == "negative")
-    neu = total - pos - neg
+    # مقادیر پیش‌فرض
+    total_reviews = review_count
+    avg_rating = 0.0
+    positive_pct = 0.0
+    negative_pct = 0.0
+    sentiment_score = 0.0
+    summary = "Customer satisfaction is mixed."
+    frequent_issues: list[str] = []
+    positive_highlights: list[str] = []
+    example_comments: list[str] = []
 
-    avg_rating = (
-        sum(_safe_int(r.get("rating")) for r in data.reviews) / total if total > 0 else 0.0
-    )
+    # ---- ۱. تلاش برای خواندن از comments_summary.csv ----
+    comments_rows = _read_csv("comments_summary.csv")
+    row = next((r for r in comments_rows if str(r.get("product_id")) == str(sku)), None)
 
-    from collections import defaultdict
-    issue_counts = defaultdict(int)
-    like_counts = defaultdict(int)
+    def _to_float(v, default=0.0):
+        try:
+            if v is None or v == "":
+                return default
+            return float(v)
+        except (TypeError, ValueError):
+            return default
 
-    for r in data.reviews:
-        tag = r.get("tag_main") or ""
-        sentiment = str(r.get("sentiment")).lower()
-        if sentiment == "negative":
-            issue_counts[tag] += 1
-        elif sentiment == "positive":
-            like_counts[tag] += 1
+    def _to_int(v, default=0):
+        try:
+            if v is None or v == "":
+                return default
+            return int(float(v))
+        except (TypeError, ValueError):
+            return default
 
-    top_issues = sorted(
-        [{"tag": k, "count": v} for k, v in issue_counts.items()],
-        key=lambda x: x["count"],
-        reverse=True,
-    )[:5]
-    top_likes = sorted(
-        [{"tag": k, "count": v} for k, v in like_counts.items()],
-        key=lambda x: x["count"],
-        reverse=True,
-    )[:5]
+    if row:
+        # اگر خلاصه آماده داری، مستقیم از CSV بخوان
+        total_reviews = _to_int(row.get("total_reviews"), review_count)
+        avg_rating = _to_float(row.get("avg_rating"), 0.0)
+        positive_pct = _to_float(row.get("positive_share"), 0.0)      # 0–100
+        negative_pct = _to_float(row.get("negative_share"), 0.0)      # 0–100
+        sentiment_score = _to_float(row.get("sentiment_score"), 0.0)  # -1 … +1
 
-    sample_comments = [
-        r.get("comment")
-        for r in data.reviews
-        if r.get("comment")
-    ][:5]
+        summary = row.get("summary_en") or summary
 
-    # درصدها و اسکور احساسات
-    if total > 0:
-        positive_pct = round(pos / total * 100.0, 1)
-        negative_pct = round(neg / total * 100.0, 1)
-        sentiment_score = round((pos - neg) / total, 2)  # -1 تا +1 تقریبی
+        issues_str = (row.get("top_issues_en") or "").strip()
+        if issues_str:
+            frequent_issues = [p.strip() for p in issues_str.split("|") if p.strip()]
+
+        highlights_str = (row.get("top_highlights_en") or "").strip()
+        if highlights_str:
+            positive_highlights = [p.strip() for p in highlights_str.split("|") if p.strip()]
+
+        examples_str = (row.get("sample_comments_fa") or "").strip()
+        if examples_str:
+            example_comments = [p.strip() for p in examples_str.split("||") if p.strip()][:3]
+
     else:
-        positive_pct = negative_pct = sentiment_score = 0.0
+        # ---- ۲. اگر در CSV چیزی نبود، از ratingها تخمین بزن ----
+        if review_count > 0:
+            ratings = []
+            for r in reviews:
+                try:
+                    ratings.append(float(r.get("rating", 0)))
+                except (TypeError, ValueError):
+                    continue
 
-    # یک خلاصه‌ی انگلیسی ساده
-    if total == 0:
-        summary_text = "No customer feedback yet."
-    elif sentiment_score > 0.3:
-        summary_text = "Customer satisfaction is good."
-    elif sentiment_score < -0.3:
-        summary_text = "Customer satisfaction is declining."
-    else:
-        summary_text = "Customer satisfaction is mixed."
+            if ratings:
+                avg_rating = sum(ratings) / len(ratings)
+                pos = sum(1 for v in ratings if v >= 4)
+                neg = sum(1 for v in ratings if v <= 2)
 
-    response = {
-        "positive_pct": positive_pct,
-        "negative_pct": negative_pct,
-        "sentiment_score": sentiment_score,
+                positive_pct = (pos / len(ratings)) * 100.0
+                negative_pct = (neg / len(ratings)) * 100.0
+                # ساده: مثبت‌ها منهای منفی‌ها روی تعداد
+                sentiment_score = (pos - neg) / len(ratings)
+
+                if avg_rating >= 4.2 and sentiment_score > 0.4:
+                    summary = "Customer satisfaction is high."
+                elif avg_rating <= 3.0 and sentiment_score < -0.2:
+                    summary = "Customer satisfaction is low."
+                else:
+                    summary = "Customer satisfaction is mixed."
+
+    result = {
+        "sku": sku,
+        "positive_pct": round(positive_pct, 1),
+        "negative_pct": round(negative_pct, 1),
+        "sentiment_score": round(sentiment_score, 2),
         "avg_rating": round(avg_rating, 2),
-        "total_reviews": total,
-        "summary_text": summary_text,
-        "top_issues": top_issues,
-        "top_likes": top_likes,
-        "sample_comments": sample_comments,
+        "total_reviews": int(total_reviews or 0),
+        "summary": summary,
+        "frequent_issues": frequent_issues,
+        "positive_highlights": positive_highlights,
+        "example_comments": example_comments,
     }
-    return Response(response)
+    return Response(result)
 
 
 import os
