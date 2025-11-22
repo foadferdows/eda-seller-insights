@@ -602,49 +602,158 @@ def breakeven(request):
 # 4) Golden times (از روی توزیع روزها، ساده)
 # ============================================================
 
-
 @api_view(["GET"])
 @permission_classes([IsAuthenticated])
 def golden_times(request):
-    if not getattr(settings, "USE_FAKE_SELLER", False):
+    """
+    Golden sales times per product, based on sales.csv.
+
+    - best_days: top weekdays by revenue
+    - suggested_hours: generic suggested hours (we don't have time-of-day data)
+    - peak_points: top calendar dates by revenue
+    - upcoming_best_dates: next dates that fall on the best weekdays
+    """
+    sku = request.GET.get("sku")
+    data = _load_existing_data()
+
+    # filter sales for this product (or all if sku is None)
+    sales_rows = data.sales
+    if sku:
+        sales_rows = [s for s in sales_rows if s.get("product_id") == sku]
+
+    if not sales_rows:
         return Response(
-            {"detail": "Real Digikala insights are not implemented yet."},
-            status=status.HTTP_501_NOT_IMPLEMENTED,
+            {
+                "product_id": sku,
+                "best_days": [],
+                "suggested_hours": [],
+                "peak_points": [],
+                "upcoming_best_dates": [],
+            }
         )
 
-    data = _load_existing_data()
-    if not data.sales:
-        return Response({"detail": "No sales data."}, status=status.HTTP_400_BAD_REQUEST)
+    import pandas as pd
 
-    # توزیع بر اساس روز هفته
-    weekday_counts = defaultdict(int)
-    for s in data.sales:
-        d = s.get("date")
-        qty = _safe_int(s.get("quantity"))
-        if not d:
-            continue
-        weekday_counts[d.weekday()] += qty  # Monday=0
+    df = pd.DataFrame(sales_rows)
 
-    weekday_map = {
-        5: "شنبه",
-        6: "یکشنبه",
-        0: "دوشنبه",
-        1: "سه‌شنبه",
-        2: "چهارشنبه",
-        3: "پنجشنبه",
-        4: "جمعه",
-    }
-    items = [
-        {"weekday": weekday_map.get(k, str(k)), "quantity": v}
-        for k, v in weekday_counts.items()
-    ]
-    items.sort(key=lambda x: x["quantity"], reverse=True)
+    # ensure date is datetime
+    df["date"] = pd.to_datetime(df["date"])
+    df["quantity"] = pd.to_numeric(df["quantity"], errors="coerce").fillna(0)
+    df["final_price"] = pd.to_numeric(df["final_price"], errors="coerce").fillna(0)
+    df["revenue"] = df["quantity"] * df["final_price"]
 
-    response = {
-        "best_days": items[:3],
-        "suggested_hours": ["10-12", "18-21"],  # چون در CSV ساعت نداریم، ثابت است
-    }
-    return Response(response)
+    # 1) best weekdays by revenue
+    df["weekday_idx"] = df["date"].dt.weekday
+    df["weekday_name"] = df["date"].dt.day_name()
+
+    weekday_stats = (
+        df.groupby(["weekday_idx", "weekday_name"])["revenue"]
+        .sum()
+        .reset_index()
+        .sort_values("revenue", ascending=False)
+    )
+    total_rev = float(weekday_stats["revenue"].sum()) or 1.0
+
+    best_days = []
+    for _, row in weekday_stats.head(3).iterrows():
+        best_days.append(
+            {
+                "weekday": row["weekday_name"],
+                "revenue": round(float(row["revenue"]), 2),
+                "share": round(float(row["revenue"]) / total_rev, 3),
+            }
+        )
+
+    # 2) peak calendar dates
+    daily_stats = (
+        df.groupby("date")["revenue"]
+        .sum()
+        .reset_index()
+        .sort_values("revenue", ascending=False)
+    )
+
+    peak_points = []
+    for _, row in daily_stats.head(3).iterrows():
+        peak_points.append(
+            {
+                "date": row["date"].strftime("%Y-%m-%d"),
+                "revenue": round(float(row["revenue"]), 2),
+            }
+        )
+
+    # 3) upcoming best dates (forecast based on weekday pattern)
+    upcoming = []
+    if not df["date"].empty and best_days:
+        last_date = df["date"].max()
+        best_names = {b["weekday"] for b in best_days[:2]}  # top-2 weekdays
+
+        for i in range(1, 15):  # next 14 days
+            d = last_date + pd.Timedelta(days=i)
+            name = d.day_name()
+            if name in best_names:
+                upcoming.append(
+                    {
+                        "date": d.strftime("%Y-%m-%d"),
+                        "weekday": name,
+                    }
+                )
+
+    # 4) suggested hours (generic – no time column in CSV)
+    suggested_hours = ["10:00–12:00", "18:00–21:00"]
+
+    return Response(
+        {
+            "product_id": sku,
+            "best_days": best_days,
+            "suggested_hours": suggested_hours,
+            "peak_points": peak_points,
+            "upcoming_best_dates": upcoming,
+        }
+    )
+
+
+# @api_view(["GET"])
+# @permission_classes([IsAuthenticated])
+# def golden_times(request):
+#     if not getattr(settings, "USE_FAKE_SELLER", False):
+#         return Response(
+#             {"detail": "Real Digikala insights are not implemented yet."},
+#             status=status.HTTP_501_NOT_IMPLEMENTED,
+#         )
+
+#     data = _load_existing_data()
+#     if not data.sales:
+#         return Response({"detail": "No sales data."}, status=status.HTTP_400_BAD_REQUEST)
+
+#     # توزیع بر اساس روز هفته
+#     weekday_counts = defaultdict(int)
+#     for s in data.sales:
+#         d = s.get("date")
+#         qty = _safe_int(s.get("quantity"))
+#         if not d:
+#             continue
+#         weekday_counts[d.weekday()] += qty  # Monday=0
+
+#     weekday_map = {
+#         5: "شنبه",
+#         6: "یکشنبه",
+#         0: "دوشنبه",
+#         1: "سه‌شنبه",
+#         2: "چهارشنبه",
+#         3: "پنجشنبه",
+#         4: "جمعه",
+#     }
+#     items = [
+#         {"weekday": weekday_map.get(k, str(k)), "quantity": v}
+#         for k, v in weekday_counts.items()
+#     ]
+#     items.sort(key=lambda x: x["quantity"], reverse=True)
+
+#     response = {
+#         "best_days": items[:3],
+#         "suggested_hours": ["10-12", "18-21"],  # چون در CSV ساعت نداریم، ثابت است
+#     }
+#     return Response(response)
 
 
 # ============================================================
@@ -1067,110 +1176,95 @@ def speed_comparison(request):
 # # 9) Comment analysis (reviews.csv)
 # # ============================================================
 
-# 9) Comment analysis
+
+from django.conf import settings
+import csv
+from rest_framework.decorators import api_view, permission_classes
+from rest_framework.permissions import IsAuthenticated
+from rest_framework.response import Response
+from pathlib import Path
+
+COMMENTS_SUMMARY_PATH = settings.BASE_DIR / "data" / "comments_summary.csv"
+
+def _load_comments_summary():
+    rows = []
+    if COMMENTS_SUMMARY_PATH.exists():
+        with open(COMMENTS_SUMMARY_PATH, newline="", encoding="utf-8") as f:
+            reader = csv.DictReader(f)
+            rows = list(reader)
+    return rows
+
+def _find_comment_row(sku: str):
+    for row in _load_comments_summary():
+        if row.get("product_id") == sku:
+            return row
+    return None
+
 @api_view(["GET"])
+@permission_classes([IsAuthenticated])
 def comment_analysis(request):
-    sku = request.query_params.get("sku")
+    sku = request.GET.get("sku")
     if not sku:
-        return Response({"detail": "sku is required"}, status=status.HTTP_400_BAD_REQUEST)
+        return Response({"detail": "Missing sku"}, status=400)
 
-    data = _load_existing_data()
-    reviews = [r for r in data.reviews if r.get("product_id") == sku]
-    review_count = len(reviews)
+    row = _find_comment_row(sku)
 
-    # مقادیر پیش‌فرض
-    total_reviews = review_count
-    avg_rating = 0.0
-    positive_pct = 0.0
-    negative_pct = 0.0
-    sentiment_score = 0.0
-    summary = "Customer satisfaction is mixed."
-    frequent_issues: list[str] = []
-    positive_highlights: list[str] = []
-    example_comments: list[str] = []
+    if not row:
+        # مقدارهای پیش‌فرض اگر برای این SKU ردیفی در CSV نبود
+        return Response({
+            "positive_ratio": 0.0,
+            "negative_ratio": 0.0,
+            "sentiment_score": 0.0,
+            "avg_rating": 0.0,
+            "total_reviews": 0,
+            "summary_en": "",
+            "top_issues_en": [],
+            "top_highlights_en": [],
+            "sample_comments_fa": [],
+        })
 
-    # ---- ۱. تلاش برای خواندن از comments_summary.csv ----
-    comments_rows = _read_csv("comments_summary.csv")
-    row = next((r for r in comments_rows if str(r.get("product_id")) == str(sku)), None)
-
-    def _to_float(v, default=0.0):
+    def parse_ratio(row, ratio_key, share_key):
+        raw = (row.get(ratio_key) or row.get(share_key) or "0").strip()
         try:
-            if v is None or v == "":
-                return default
-            return float(v)
-        except (TypeError, ValueError):
-            return default
+            value = float(raw)
+        except ValueError:
+            return 0.0
+        # اگر مقدار به صورت درصد (۰–۱۰۰) باشد، تبدیل به ۰–۱ کن
+        return value / 100.0 if value > 1 else value
+    
+    def parse_list(field_name: str):
+        raw = (row.get(field_name) or "").strip()
+        if not raw:
+            return []
 
-    def _to_int(v, default=0):
-        try:
-            if v is None or v == "":
-                return default
-            return int(float(v))
-        except (TypeError, ValueError):
-            return default
+        # برای کامنت‌های فارسی، جداکننده "||" است
+        if field_name == "sample_comments_fa":
+            parts = raw.split("||")
+        else:
+            # برای بقیه معمولا با کاما جدا شده‌اند
+            # مثل: "quality, price, packaging"
+            parts = raw.split(",")
 
-    if row:
-        # اگر خلاصه آماده داری، مستقیم از CSV بخوان
-        total_reviews = _to_int(row.get("total_reviews"), review_count)
-        avg_rating = _to_float(row.get("avg_rating"), 0.0)
-        positive_pct = _to_float(row.get("positive_share"), 0.0)      # 0–100
-        negative_pct = _to_float(row.get("negative_share"), 0.0)      # 0–100
-        sentiment_score = _to_float(row.get("sentiment_score"), 0.0)  # -1 … +1
+        return [p.strip() for p in parts if p.strip()]
 
-        summary = row.get("summary_en") or summary
 
-        issues_str = (row.get("top_issues_en") or "").strip()
-        if issues_str:
-            frequent_issues = [p.strip() for p in issues_str.split("|") if p.strip()]
+    pos_ratio = parse_ratio(row, "positive_ratio", "positive_share")
+    neg_ratio = parse_ratio(row, "negative_ratio", "negative_share")
 
-        highlights_str = (row.get("top_highlights_en") or "").strip()
-        if highlights_str:
-            positive_highlights = [p.strip() for p in highlights_str.split("|") if p.strip()]
 
-        examples_str = (row.get("sample_comments_fa") or "").strip()
-        if examples_str:
-            example_comments = [p.strip() for p in examples_str.split("||") if p.strip()][:3]
+    return Response({
+        "positive_ratio": parse_ratio(row, "positive_ratio", "positive_share"),
+        "negative_ratio": parse_ratio(row, "negative_ratio", "negative_share"),
+        "sentiment_score": float(row.get("sentiment_score", 0) or 0),
+        "avg_rating": float(row.get("avg_rating", 0) or 0),
+        "total_reviews": int(row.get("total_reviews", 0) or 0),
+        "summary_en": (row.get("summary_en") or "").strip(),
+        "top_issues_en": parse_list("top_issues_en"),
+        "top_highlights_en": parse_list("top_highlights_en"),
+        "sample_comments_fa": parse_list("sample_comments_fa"),
+    })
 
-    else:
-        # ---- ۲. اگر در CSV چیزی نبود، از ratingها تخمین بزن ----
-        if review_count > 0:
-            ratings = []
-            for r in reviews:
-                try:
-                    ratings.append(float(r.get("rating", 0)))
-                except (TypeError, ValueError):
-                    continue
 
-            if ratings:
-                avg_rating = sum(ratings) / len(ratings)
-                pos = sum(1 for v in ratings if v >= 4)
-                neg = sum(1 for v in ratings if v <= 2)
-
-                positive_pct = (pos / len(ratings)) * 100.0
-                negative_pct = (neg / len(ratings)) * 100.0
-                # ساده: مثبت‌ها منهای منفی‌ها روی تعداد
-                sentiment_score = (pos - neg) / len(ratings)
-
-                if avg_rating >= 4.2 and sentiment_score > 0.4:
-                    summary = "Customer satisfaction is high."
-                elif avg_rating <= 3.0 and sentiment_score < -0.2:
-                    summary = "Customer satisfaction is low."
-                else:
-                    summary = "Customer satisfaction is mixed."
-
-    result = {
-        "sku": sku,
-        "positive_pct": round(positive_pct, 1),
-        "negative_pct": round(negative_pct, 1),
-        "sentiment_score": round(sentiment_score, 2),
-        "avg_rating": round(avg_rating, 2),
-        "total_reviews": int(total_reviews or 0),
-        "summary": summary,
-        "frequent_issues": frequent_issues,
-        "positive_highlights": positive_highlights,
-        "example_comments": example_comments,
-    }
-    return Response(result)
 
 
 import os

@@ -29,8 +29,8 @@ export default function App() {
       <div className="min-h-screen bg-gray-900 text-gray-100 flex items-center justify-center">
         <div className="w-full max-w-md bg-gray-800 rounded-2xl border border-gray-700 p-8 shadow-xl">
           <h1 className="text-2xl font-bold mb-6 text-center">
-            🔗 ورود به EDA برای سلر دیجی‌کالا
-          </h1>
+          Make us your financial assistant.
+                   </h1>
           <SellerLogin onSuccess={handleLoginSuccess} />
         </div>
       </div>

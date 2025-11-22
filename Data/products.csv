@@ -1,13 +1,15 @@
 product_id,title,category,brand,cost_price,selling_price,stock
-P001,Product 1,Fashion,Brand 2,825,1015.37,50
-P002,Product 2,Fashion,Brand 1,178,237.38,20
-P003,Product 3,Health,Brand 4,433,764.43,34
-P004,Product 4,Health,Brand 2,505,640.07,12
-P005,Product 5,Home,Brand 2,480,709.87,1
-P006,Product 6,Digital,Brand 4,454,695.89,3
-P007,Product 7,Digital,Brand 1,856,1096.95,133
-P008,Product 8,Health,Brand 2,753,1066.94,40
-P009,Product 9,Health,Brand 3,276,429.4,5
-P010,Product 10,Digital,Brand 1,881,1326.61,7
-P011,Product 11,Health,Brand 3,421,507.29,8
-P012,Product 12,Digital,Brand 3,271,343.39,10
+P001,Men’s leather coat,Fashion,Brand 2,825,1015.37,50
+P002,Women’s leather coat,Fashion,Brand 1,178,237.38,20
+P003,Lipstick pencil ,Health,Brand 4,433,764.43,34
+P004,Eyebrow pencil,Health,Brand 2,505,640.07,12
+P005,Inflatable sofa for kids,Home,Brand 2,480,709.87,1
+P006,Asus laptop,Digital,Brand 4,454,695.89,3
+P007,Apple mobile phone,Digital,Brand 1,856,1096.95,133
+P008,Men’s perfume,Health,Brand 2,753,1066.94,40
+P009,Hair color No.85,Health,Brand 3,276,429.4,5
+P010,Apple bluetooth headphone,Digital,Brand 1,881,1326.61,7
+P011,Women’s body splash,Health,Brand 3,421,507.29,8
+P012,Sony game console,Digital,Brand 3,271,343.39,
+
+

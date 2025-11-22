@@ -326,27 +326,57 @@ export default function InsightsDashboard() {
 
 
         {/* 5. زمان‌های طلایی فروش */}
-        <MetricCard title="زمان‌های طلایی فروش">
-          <StatRow label="نام محصول" value={golden?.title ?? "-"} />
-          <StatRow
-            label="بهترین ساعات"
-            value={(golden?.best_hours || []).join(" ، ")}
-          />
-          <StatRow
-            label="بهترین روزها"
-            value={(golden?.best_days || []).join(" ، ")}
-          />
-          <div className="mt-3 text-xs text-gray-400">
-            نمونه نقاط اوج:
-            <ul className="list-disc list-inside mt-1">
-              {(golden?.heatmap || []).map((h: AnyObj, i: number) => (
-                <li key={i}>
-                  {h.day} - {h.hour}: {h.orders} سفارش
-                </li>
-              ))}
-            </ul>
-          </div>
-        </MetricCard>
+        <MetricCard title="Golden sales times">
+    <div className="flex justify-between text-sm">
+      <span className="text-muted-foreground">Product</span>
+      <span className="font-mono">{selectedSku || "-"}</span>
+    </div>
+
+    <div className="flex justify-between text-sm">
+      <span className="text-muted-foreground">Best hours</span>
+      <span className="font-mono text-right">
+        {golden?.suggested_hours && golden.suggested_hours.length > 0
+          ? golden.suggested_hours.join(", ")
+          : "-"}
+      </span>
+    </div>
+
+    <div className="flex justify-between text-sm">
+      <span className="text-muted-foreground">Best days</span>
+      <span className="font-mono text-right">
+        {golden?.best_days && golden.best_days.length > 0
+          ? golden.best_days
+              .map((d: any) => d.weekday ?? String(d))
+              .join(", ")
+          : "-"}
+      </span>
+    </div>
+
+    <div className="flex justify-between text-sm">
+      <span className="text-muted-foreground">Peak points</span>
+      <span className="font-mono text-right">
+        {golden?.peak_points && golden.peak_points.length > 0
+          ? golden.peak_points
+              .map((p: any) =>
+                typeof p === "string"
+                  ? p
+                  : `${p.date}${p.label ? ` (${p.label})` : ""}`
+              )
+              .join(", ")
+          : "-"}
+      </span>
+    </div>
+
+    {/* اگر خواستی پیش‌بینی روزهای آینده را هم نشان بدهی */}
+    {golden?.upcoming_best_dates && golden.upcoming_best_dates.length > 0 && (
+      <div className="pt-2 border-t border-slate-800 text-xs text-muted-foreground">
+        Upcoming golden days:&nbsp;
+        {golden.upcoming_best_dates
+          .map((d: any) => `${d.date} (${d.weekday})`)
+          .join(", ")}
+      </div>
+    )}
+ </MetricCard>
 
 
                 {/* 6. Revenue forecast for this product */}
@@ -519,27 +549,9 @@ export default function InsightsDashboard() {
 </MetricCard>
 
 
-        {/* 11. تحلیل کامنت‌ها */}
-
 
 {/* 11. Comment analysis */}
 <MetricCard title="Customer experience from comments">
-  <StatRow
-    label="Positive reviews"
-    value={
-      comments && typeof comments.positive_pct === "number"
-        ? `${comments.positive_pct.toFixed(1)}%`
-        : "-"
-    }
-  />
-  <StatRow
-    label="Negative reviews"
-    value={
-      comments && typeof comments.negative_pct === "number"
-        ? `${comments.negative_pct.toFixed(1)}%`
-        : "-"
-    }
-  />
   <StatRow
     label="Sentiment score"
     value={
@@ -560,15 +572,21 @@ export default function InsightsDashboard() {
     label="Total reviews"
     value={comments?.total_reviews ?? 0}
   />
+<div className="mt-2 text-xs text-gray-400">
+  Summary:
+  <div className="mt-1">
+    {comments?.summary_en ?? "No summary available yet."}
+  </div>
+</div>
 
-  <div className="mt-2 text-xs text-gray-400">
+  {/* <div className="mt-2 text-xs text-gray-400">
     Summary:
     <div className="mt-1">
       {comments?.summary_text ?? "No summary available yet."}
     </div>
-  </div>
+  </div> */}
 
-  <div className="mt-2 text-xs text-gray-400">
+  {/* <div className="mt-2 text-xs text-gray-400">
     Frequent issues:
     <ul className="list-disc list-inside mt-1">
       {(comments?.top_issues || []).map((i: AnyObj, idx: number) => (
@@ -599,12 +617,38 @@ export default function InsightsDashboard() {
         )
       )}
     </ul>
-  </div>
+  </div> */}
+  {/* Frequent issues */}
+<div className="mt-2 text-xs text-gray-400">
+  Frequent issues:
+  <ul className="list-disc list-inside mt-1">
+    {(comments?.top_issues_en || []).map((issue: string, idx: number) => (
+      <li key={idx}>{issue}</li>
+    ))}
+  </ul>
+</div>
+
+{/* Positive highlights */}
+<div className="mt-2 text-xs text-gray-400">
+  Positive highlights:
+  <ul className="list-disc list-inside mt-1">
+    {(comments?.top_highlights_en || []).map((hi: string, idx: number) => (
+      <li key={idx}>{hi}</li>
+    ))}
+  </ul>
+</div>
+
+{/* Example comments */}
+<div className="mt-2 text-xs text-gray-400">
+  Example comments:
+  <ul className="list-disc list-inside mt-1">
+    {(comments?.sample_comments_fa || []).map((c: string, idx: number) => (
+      <li key={idx}>{c}</li>
+    ))}
+  </ul>
+</div>
+
 </MetricCard>
-
-
-
-
       </div>
     </div>
   );

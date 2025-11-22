@@ -73,11 +73,15 @@
 │       └── MetricCard.tsx
 ├── Data
 │   ├── ساختار دیتا.pdf
+│   ├── comments_raw.csv
+│   ├── comments_summary.csv
 │   ├── inventory.csv
 │   ├── pricing.csv
 │   ├── products.csv
+│   ├── restocks.csv
 │   ├── reviews.csv
-│   └── sales.csv
+│   ├── sales.csv
+│   └── urls.csv
 ├── db.sqlite3
 ├── index.css
 ├── index.html
@@ -9126,6 +9130,10 @@
 │   └── Settings.tsx
 ├── postcss.config.js
 ├── README.md
+├── scripts
+│   ├── analyze_comments.py
+│   ├── crawl_comments.py
+│   └── Data
 ├── services
 │   ├── api.ts
 │   ├── dk.ts
@@ -9140,4 +9148,4 @@
 ├── types.ts
 └── vite.config.ts
 
-729 directories, 8412 files
+731 directories, 8418 files
