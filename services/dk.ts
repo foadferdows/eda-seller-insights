@@ -63,3 +63,7 @@ export async function getCommentAnalysis(sku?: string) {
   return apiGet(withSku("/insights/comment-analysis/", sku));
 }
 
+
+export async function getClassicOverview() {
+  return apiGet("/insights/classic-overview/");
+}

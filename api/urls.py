@@ -15,6 +15,7 @@ from .views_insights import (
     restock_time,
     speed_comparison,
     comment_analysis,
+    classic_overview,
 )
 from .views_settings import seller_settings
 
@@ -25,7 +26,7 @@ urlpatterns = [
     path("dk/profile/", seller_profile),  
     path("insights/products/", products_list),    
     path("insights/products/", insights_products, name="insights_products"),
-
+    path("insights/classic-overview/", classic_overview),
     path('auth/login/', TokenObtainPairView.as_view(), name='token_obtain_pair'),
     path('auth/refresh/', TokenRefreshView.as_view(), name='token_refresh'),
     path("settings/", seller_settings, name="seller_settings"),

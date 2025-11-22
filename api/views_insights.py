@@ -1297,3 +1297,225 @@ def products_list(request):
         if p.get("product_id")
     ]
     return Response(items)
+
+
+
+
+
+
+# api/views_insights.py
+
+from collections import defaultdict
+from datetime import date
+from rest_framework.decorators import api_view, permission_classes
+from rest_framework.permissions import IsAuthenticated
+from rest_framework.response import Response
+from django.conf import settings
+
+# اگر بالا نیستند:
+# from .data_loader import _load_existing_data, _build_index_by_product_id
+# from .data_loader import _safe_float, _safe_int
+
+
+@api_view(["GET"])
+@permission_classes([IsAuthenticated])
+def classic_overview(request):
+    """
+    Global metrics for Classic Dashboard (no SKU filter).
+
+    Output shape is compatible with src/services/mockData.ts:
+      - salesData: { labels, series }
+      - pricingData: { price_points, profit_curve, optimal }
+      - inventoryData: { items: [{sku, days_of_cover, status}] }
+      - portfolioData: { allocation: [{asset, pct}] }
+    """
+    if not getattr(settings, "USE_FAKE_SELLER", False):
+        return Response(
+            {"detail": "Real Digikala classic overview not implemented yet."},
+            status=501,
+        )
+
+    data = _load_existing_data()
+    products_index = _build_index_by_product_id(data.products)
+
+    # ---------- 1) Sales trend (global) ----------
+    monthly_rev = defaultdict(float)
+
+    for s in data.sales:
+        d = s.get("date") or s.get("sale_date")
+        if not d:
+            continue
+
+        if isinstance(d, str):
+            # skip header / invalid strings like "sale_date", "date", ...
+            if d.lower() in {"date", "sale_date"}:
+                continue
+            try:
+                d = date.fromisoformat(d)
+            except ValueError:
+                # اگر فرمت تاریخ درست نبود، آن ردیف را رد کن
+                continue
+
+    qty = _safe_int(s.get("quantity"))
+    price = _safe_float(s.get("unit_price"))
+    monthly_rev[(d.year, d.month)] += qty * price
+
+
+    # مرتب‌سازی و گرفتن ۶ ماه آخر
+    ordered = sorted(monthly_rev.items(), key=lambda x: x[0])
+    if len(ordered) > 6:
+        ordered = ordered[-6:]
+
+    month_names = ["Jan", "Feb", "Mar", "Apr", "May", "Jun",
+                   "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"]
+    sales_labels = [month_names[m - 1] for (_, m), _ in ordered]
+    sales_series = [round(v, 2) for _, v in ordered]
+
+    salesData = {
+        "labels": sales_labels,
+        "series": sales_series,
+    }
+
+    # ---------- 2) Simple pricing curve (pick top-selling SKU) ----------
+    totals_qty = defaultdict(int)
+    for s in data.sales:
+        pid = s.get("product_id")
+        qty = _safe_int(s.get("quantity"))
+        totals_qty[pid] += qty
+
+    sample_pid = None
+    if totals_qty:
+        sample_pid = max(totals_qty.items(), key=lambda x: x[1])[0]
+    elif data.products:
+        sample_pid = data.products[0].get("product_id")
+
+    base_price = 0.0
+    if sample_pid and sample_pid in products_index:
+        base_price = _safe_float(products_index[sample_pid].get("selling_price"))
+
+    if base_price <= 0:
+        base_price = 100.0  # fallback
+
+    # چهار نقطه قیمتی حول قیمت فعلی
+    price_points = [
+        round(base_price * 0.9, 1),
+        round(base_price * 0.95, 1),
+        round(base_price * 1.0, 1),
+        round(base_price * 1.05, 1),
+    ]
+
+    # فرض ساده: حاشیه سود ۳۰٪، حجم فروش کمی با افزایش قیمت کم می‌شود
+    profit_curve = []
+    for i, p in enumerate(price_points):
+        margin_pct = 0.3
+        # کاهش حجم فروش روی قیمت‌های بالاتر (فقط برای شکل نمودار)
+        volume_factor = 1.0 - 0.08 * i
+        volume_factor = max(volume_factor, 0.6)
+        profit = p * margin_pct * volume_factor * 100  # scale arbitrary
+        profit_curve.append(round(profit, 1))
+
+    # نقطه بهینه = بیشترین profit
+    max_idx = max(range(len(profit_curve)), key=lambda i: profit_curve[i])
+    optimal = {
+        "price": price_points[max_idx],
+        "profit": profit_curve[max_idx],
+    }
+
+    pricingData = {
+        "price_points": price_points,
+        "profit_curve": profit_curve,
+        "optimal": optimal,
+    }
+
+    # ---------- 3) Inventory health (top low-cover SKUs) ----------
+    # محاسبه avg daily sales برای هر محصول
+    daily_by_pid = defaultdict(lambda: defaultdict(float))
+    for s in data.sales:
+        pid = s.get("product_id")
+        d = s.get("date")
+        if not d or not pid:
+            continue
+        qty = _safe_int(s.get("quantity"))
+        daily_by_pid[pid][d] += qty
+
+    avg_daily_sales = {}
+    for pid, day_map in daily_by_pid.items():
+        if not day_map:
+            continue
+        avg_daily_sales[pid] = sum(day_map.values()) / max(len(day_map), 1)
+
+    items = []
+    for inv in data.inventory:
+        pid = inv.get("product_id")
+        stock = _safe_int(inv.get("current_stock"))
+        if not pid:
+            continue
+        avg = avg_daily_sales.get(pid, 0.0)
+        if avg > 0:
+            days_cover = stock / avg
+        else:
+            days_cover = 9999.0
+
+        if days_cover < 7:
+            status = "low"
+        elif days_cover < 30:
+            status = "medium"
+        else:
+            status = "healthy"
+
+        items.append(
+            {
+                "sku": str(pid),
+                "days_of_cover": round(days_cover, 1),
+                "status": status,
+            }
+        )
+
+    # فقط چند مورد مهم (کمترین days_of_cover)
+    items.sort(key=lambda x: x["days_of_cover"])
+    inventoryData = {"items": items[:5]}
+
+    # ---------- 4) Portfolio by category (revenue share) ----------
+    revenue_by_cat = defaultdict(float)
+    for s in data.sales:
+        pid = s.get("product_id")
+        if not pid:
+            continue
+        prod = products_index.get(pid)
+        if not prod:
+            continue
+        cat = prod.get("category") or "Other"
+        qty = _safe_int(s.get("quantity"))
+        price = _safe_float(s.get("unit_price"))
+        revenue_by_cat[cat] += qty * price
+
+    total_rev = sum(revenue_by_cat.values()) or 1.0
+    allocation = [
+        {"asset": cat, "pct": round(100.0 * val / total_rev, 1)}
+        for cat, val in sorted(
+            revenue_by_cat.items(),
+            key=lambda x: x[1],
+            reverse=True,
+        )
+    ]
+
+    # محدود کردن به ۶ دسته اول
+    if len(allocation) > 6:
+        top = allocation[:5]
+        others_pct = round(
+            sum(a["pct"] for a in allocation[5:]),
+            1,
+        )
+        top.append({"asset": "Other", "pct": others_pct})
+        allocation = top
+
+    portfolioData = {"allocation": allocation}
+
+    return Response(
+        {
+            "salesData": salesData,
+            "pricingData": pricingData,
+            "inventoryData": inventoryData,
+            "portfolioData": portfolioData,
+        }
+    )
