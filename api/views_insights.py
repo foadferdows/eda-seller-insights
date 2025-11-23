@@ -12,6 +12,12 @@ from typing import Dict, List, Any, Optional
 
 from django.conf import settings
 
+import json
+from openai import OpenAI
+
+
+from django.conf import settings
+
 from rest_framework import status
 from rest_framework.decorators import api_view, permission_classes
 from rest_framework.permissions import IsAuthenticated
@@ -1519,3 +1525,83 @@ def classic_overview(request):
             "portfolioData": portfolioData,
         }
     )
+
+
+
+def _format_card_data_for_prompt(card_data: dict) -> str:
+    """ساده‌سازی دیتا برای فرستادن به GPT به صورت متن قابل خواندن."""
+    # اگر card_data لیست یا نوع دیگری بود، به dict تبدیلش کن
+    if not isinstance(card_data, dict):
+        try:
+            return json.dumps(card_data, ensure_ascii=False, indent=2)
+        except Exception:
+            return str(card_data)
+
+    lines = []
+    for key, value in card_data.items():
+        # key ها را کمی خواناتر کنیم
+        label = key.replace("_", " ").capitalize()
+        lines.append(f"- {label}: {value}")
+    return "\n".join(lines)
+
+
+@api_view(["POST"])
+@permission_classes([IsAuthenticated])
+def card_analysis(request):
+    """
+    دریافت card_id + card_data از فرانت، استفاده از پرامپت مخصوص کارت،
+    و تولید یک تحلیل کوتاه توسط GPT.
+    """
+    card_id = request.data.get("card_id")
+    card_data = request.data.get("card_data") or {}
+    product_id = request.data.get("product_id")
+
+    if not card_id:
+        return Response({"detail": "card_id is required."}, status=400)
+
+    prompt_template = getattr(settings, "EDA_CARD_ANALYSIS_PROMPTS", {}).get(card_id)
+    if not prompt_template:
+        # اگر برای این کارت پرامپت تعریف نشده، تحلیل خالی برگردان
+        return Response({"analysis": ""})
+
+    # داده کارت را به متن تبدیل کن
+    data_text = _format_card_data_for_prompt(card_data)
+    if product_id:
+        data_text = f"Product ID: {product_id}\n" + data_text
+
+    prompt = prompt_template.format(data=data_text)
+
+    # فراخوانی GPT – اینجا از OpenAI جدید استفاده می‌کنم، مدل را خودت تنظیم کن
+    try:
+
+        client = OpenAI(api_key=settings.OPENAI_API_KEY)
+
+        chat = client.responses.create(
+            model="gpt-4.1-mini",  # یا هر مدلی که استفاده می‌کنی
+            input=[
+                {
+                    "role": "system",
+                    "content": (
+                        "You are EDA, an economic decision assistant for Digikala sellers. "
+                        "Always answer in short, practical English, without markdown formatting."
+                    ),
+                },
+                {"role": "user", "content": prompt},
+            ],
+            max_output_tokens=220,
+        )
+
+        analysis_text = chat.output[0].content[0].text
+    except Exception as exc:
+        # در MVP فقط خطا را لاگ کن و پیام کوتاه بده
+        print("card_analysis error:", exc)
+        return Response(
+            {"analysis": "", "error": "LLM_call_failed"},
+            status=200,
+        )
+    # print("CARD_ANALYSIS CALL:", card_id)
+    # print("HAS_PROMPT:", card_id in prompts)
+    # print("OPENAI_API_KEY:", bool(api_key))
+
+
+    return Response({"analysis": analysis_text})

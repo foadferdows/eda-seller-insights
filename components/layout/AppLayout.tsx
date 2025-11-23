@@ -27,14 +27,29 @@ export default function AppLayout({
       {/* Header */}
       <header className="border-b border-gray-800 bg-gray-900/80 backdrop-blur-sm">
         <div className="max-w-6xl mx-auto px-4 py-4 flex items-center justify-between">
-          <div>
-            <h1 className="text-xl md:text-2xl font-bold flex items-center gap-2">
-              <span>📊 EDA – Economic Decision Assistant</span>
-            </h1>
-            <p className="text-xs md:text-sm text-gray-400">
-              Demo version · Economic insights for Digikala sellers
-            </p>
+          {/* Logo + title */}
+          <div className="flex items-center gap-3">
+            {/* Logo box (جدا از بک‌گراند) */}
+            <div className="bg-white/10 backdrop-blur-sm p-1 rounded-xl shadow-md">
+              <img
+                src="/predify-logo.png" // اگر اسم/پسوند فرق دارد این مسیر را عوض کن
+                alt="Predify logo"
+                className="h-8 w-auto select-none"
+              />
+            </div>
+
+            {/* Title + subtitle */}
+            <div className="flex flex-col leading-tight">
+              <h1 className="text-xl md:text-2xl font-bold flex items-center gap-2 text-white">
+                Predify – Economic Decision Assistant
+              </h1>
+              <p className="text-xs md:text-sm text-gray-400">
+                Demo version · Economic insights for marketplace sellers
+              </p>
+            </div>
           </div>
+
+          {/* Logout button */}
           <button
             onClick={onLogout}
             className="bg-red-600 hover:bg-red-500 text-white rounded-lg px-4 py-2 text-sm"
@@ -122,14 +137,14 @@ function TabButton({ label, active, onClick }: TabButtonProps) {
 //               <span>📊 EDA – Economic Decision Assistant</span>
 //             </h1>
 //             <p className="text-xs md:text-sm text-gray-400">
-//               نسخه دمو | تحلیل اقتصادی برای فروشندگان دیجی‌کالا
+//               Demo version · Economic insights for Digikala sellers
 //             </p>
 //           </div>
 //           <button
 //             onClick={onLogout}
 //             className="bg-red-600 hover:bg-red-500 text-white rounded-lg px-4 py-2 text-sm"
 //           >
-//             خروج
+//             Logout
 //           </button>
 //         </div>
 
@@ -177,4 +192,3 @@ function TabButton({ label, active, onClick }: TabButtonProps) {
 //     </button>
 //   );
 // }
-

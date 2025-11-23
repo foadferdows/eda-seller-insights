@@ -71,3 +71,48 @@ export async function post(path: string, body: any) {
   return text ? JSON.parse(text) : null;
 }
 
+
+// فرض می‌کنم api همانی است که برای بقیه callها استفاده می‌کنی
+import api from "./apiClient"; // اگر نامش چیز دیگری است، مطابق پروژه‌ات اصلاح کن
+
+// export interface CardAnalysisPayload {
+//   card_id: string;
+//   product_id?: string | null;
+//   card_data: any;
+// }
+
+// export async function fetchCardAnalysis(payload: CardAnalysisPayload) {
+//   const res = await api.post("/insights/card-analysis/", payload);
+//   return (res.data?.analysis as string) ?? "";
+// }
+
+
+// === AI Card Analysis API ===
+
+export interface CardAnalysisPayload {
+  card_id: string;
+  product_id?: string | null;
+  card_data: any;
+}
+
+export async function fetchCardAnalysis(payload: CardAnalysisPayload) {
+  const jwt = getJwt();
+
+  const res = await fetch(`${BASE}/insights/card-analysis/`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      ...(jwt ? { Authorization: `Bearer ${jwt}` } : {}),
+    },
+    body: JSON.stringify(payload),
+  });
+
+  if (!res.ok) {
+    const text = await res.text();
+    console.error("card analysis error:", text);
+    return "";
+  }
+
+  const data = await res.json();
+  return data.analysis || "";
+}

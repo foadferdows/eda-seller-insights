@@ -16,6 +16,7 @@ from .views_insights import (
     speed_comparison,
     comment_analysis,
     classic_overview,
+    card_analysis,
 )
 from .views_settings import seller_settings
 
@@ -30,7 +31,7 @@ urlpatterns = [
     path('auth/login/', TokenObtainPairView.as_view(), name='token_obtain_pair'),
     path('auth/refresh/', TokenRefreshView.as_view(), name='token_refresh'),
     path("settings/", seller_settings, name="seller_settings"),
-
+    path("insights/card-analysis/",card_analysis,name="insights-card-analysis",),
     path('ping/', ping),
     path('charts/sales-forecast/', sales_forecast),
     path('charts/optimal-pricing/', optimal_pricing),

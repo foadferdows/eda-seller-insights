@@ -11,6 +11,12 @@ https://docs.djangoproject.com/en/5.2/ref/settings/
 """
 
 from pathlib import Path
+from dotenv import load_dotenv
+import os
+
+load_dotenv()
+OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
+
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
@@ -161,3 +167,103 @@ SIMPLE_JWT = {
     "AUTH_HEADER_TYPES": ("Bearer",),
 }
 
+
+
+
+
+EDA_CARD_ANALYSIS_PROMPTS = {
+    "real_profit": (
+        "You are Predify, an economic assistant for Digikala sellers.\n"
+        "Analyze this product’s real profit margin after commission and costs.\n"
+        "Write a concise and practical insight (max 80 words).\n"
+        "Focus on: overall profitability, key risks, and one actionable suggestion.\n"
+        "Please create your advice in only 50 words"
+        "DATA:\n{data}"
+    ),
+
+    "slow_movers": (
+        "You are an inventory and pricing strategist.\n"
+        "Analyze the slow-moving product below.\n"
+        "Please create your advice in only 50 words"
+        "Write a short, actionable summary (max 80 words) explaining:\n"
+        "- Why this SKU is slow\n"
+        "- Financial risk\n"
+        "- Whether discount/removal is wise\n"
+        "- One practical action for improvement\n"
+        "DATA:\n{data}"
+    ),
+
+    "breakeven": (
+        'You are an economic advisor evaluating breakeven status.\n'
+        "Please create your advice in only 50 words"
+        "Explain in under 80 words:\n"
+        "- How far the product is from breakeven\n"
+        "- What this means financially\n"
+        "- What lever(s) seller can pull (price, cost, volume)\n"
+        "Be clear and practical.\n"
+        "DATA:\n{data}"
+    ),
+
+    "golden_times": (
+        "Please create your advice in only 50 words"
+        "You are analyzing sales timing patterns.\n"
+        "Using the data, explain (max 80 words):\n"
+        "- The strongest daily/hourly windows\n"
+        "- When promotions perform best\n"
+        "- One recommendation for scheduling ads or discounts\n"
+        "DATA:\n{data}"
+    ),
+
+    "revenue_forecast": (
+        "You are an economic forecasting assistant.\n"
+        "Please create your advice in only 50 words"
+
+        "Provide a short insight (max 80 words) about:\n"
+        "- Expected revenue trend\n"
+        "- Stability of recent sales\n"
+        "- Whether forecast shows growth/decline\n"
+        "- A practical strategic action\n"
+        "DATA:\n{data}"
+    ),
+
+    "discount_vs_competitors": (
+        "You are a pricing analyst.\n"
+        "Please create your advice in only 50 words"
+        "Compare this product’s effective discount and final price against competitors.\n"
+        "In max 80 words, summarize:\n"
+        "- The price position\n"
+        "- Whether seller is competitive\n"
+        "- A suggested action (raise/lower price or maintain)\n"
+        "DATA:\n{data}"
+    ),
+
+    "restock": (
+        "You are an inventory planner.\n"
+        "Please create your advice in only 50 words"
+        "Using the data, write a concise insight (max 80 words):\n"
+        "- Risk of stockout\n"
+        "- Whether restocking is urgent\n"
+        "- Suggested reorder quantity/timing\n"
+        "DATA:\n{data}"
+    ),
+
+    "speed_comparison": (
+        "You are comparing old vs new product sales speed.\n"
+        "Please create your advice in only 50 words"
+        "Write a short insight (max 80 words) explaining:\n"
+        "- Whether the new product performs better or worse\n"
+        "- Possible causes\n"
+        "- One practical improvement suggestion\n"
+        "DATA:\n{data}"
+    ),
+
+    "comments_analysis": (
+        "You are an assistant analyzing customer sentiments.\n"
+        "Please create your advice in only 50 words"
+        "In no more than 80 words, summarize:\n"
+        "- Key sentiment trends\n"
+        "- Main problems or praises\n"
+        "- One practical action for product or service improvement\n"
+        "DATA:\n{data}"
+    ),
+}
